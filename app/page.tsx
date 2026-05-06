@@ -1,6 +1,9 @@
 import FiltroCategorias from "@/components/FiltroCategorias";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { blingFetch } from "@/lib/bling";
+
+export const dynamic = "force-dynamic";
 
 interface BlingProduto {
   id: number;
@@ -18,22 +21,23 @@ export default async function Home() {
   let produtos: BlingProduto[] = [];
 
   try {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      (process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000");
-
-    const res = await fetch(`${baseUrl}/api/bling/produtos`, {
-      next: { revalidate: 300 },
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      produtos = data.produtos || [];
-    }
-  } catch {
-    // Bling não configurado — exibe grid vazio
+    const res = await blingFetch("/produtos?limite=100&pagina=1");
+    const data = res.ok ? await res.json() : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    produtos = data?.data?.map((p: any) => ({
+      id: p.id,
+      nome: p.nome,
+      codigo: p.codigo,
+      preco: p.preco,
+      precoCusto: p.precoCusto,
+      imagemURL: p.imagemThumbnail || p.imagemURL || "",
+      estoque: p.estoqueAtual ?? p.estoque ?? 0,
+      descricao: p.descricaoComplementar || "",
+      categoria: p.categoria?.descricao || "",
+    })) || [];
+  } catch (e) {
+    console.error("Erro ao buscar produtos:", e);
+    produtos = [];
   }
 
   const waNumber = process.env.NEXT_PUBLIC_WA_NUMBER || "";
