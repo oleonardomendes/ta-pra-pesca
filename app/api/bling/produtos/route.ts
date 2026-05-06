@@ -63,7 +63,7 @@ export async function GET() {
 
     return NextResponse.json({ produtos });
   } catch (err) {
-    console.error("[bling/produtos]", err);
+    console.error("[bling/produtos] erro completo:", err);
     return NextResponse.json(
       { error: "Erro interno ao buscar produtos" },
       { status: 500 }

@@ -40,8 +40,12 @@ export async function blingFetch(
   endpoint: string,
   options?: RequestInit
 ): Promise<Response> {
-  const makeRequest = (token: string) =>
-    fetch(`${BLING_BASE}${endpoint}`, {
+  const makeRequest = async (token: string) => {
+    const url = `${BLING_BASE}${endpoint}`;
+    console.log("[bling] URL:", url);
+    console.log("[bling] Authorization: Bearer", token.slice(0, 20) + "...");
+
+    const res = await fetch(url, {
       ...options,
       headers: {
         Accept: "application/json",
@@ -49,6 +53,15 @@ export async function blingFetch(
         Authorization: `Bearer ${token}`,
       },
     });
+
+    console.log("[bling] status:", res.status);
+    if (!res.ok) {
+      const body = await res.clone().text();
+      console.log("[bling] error body:", body);
+    }
+
+    return res;
+  };
 
   const firstRes = await makeRequest(getBlingToken());
 
