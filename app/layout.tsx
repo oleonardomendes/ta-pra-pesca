@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import GTM from "@/components/GTM";
+import ScrollReveal from "@/components/ScrollReveal";
 
 export const metadata: Metadata = {
   title: "Tá Pra Pesca — Kits Completos de Pesca em Água Doce",
@@ -43,6 +44,7 @@ export default function RootLayout({
         {/* GTM só renderiza quando NEXT_PUBLIC_GTM_ID estiver preenchido (Fase 3) */}
         {gtmId && <GTM gtmId={gtmId} />}
         {children}
+        <ScrollReveal />
       </body>
     </html>
   );
