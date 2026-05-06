@@ -38,6 +38,11 @@ export async function POST(req: Request) {
           failure: 'https://taprapesca.com.br/kits',
           pending: 'https://taprapesca.com.br/kits/obrigado',
         },
+        payment_methods: {
+          excluded_payment_types: [],
+          installments: 12,
+          default_installments: 1,
+        },
         auto_return: 'approved',
         statement_descriptor: 'TA PRA PESCA',
       }

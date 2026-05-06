@@ -39,6 +39,8 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
           creditCard: 'all',
           debitCard: 'all',
           mercadoPago: 'all',
+          bankTransfer: 'all',
+          atm: 'all',
         },
         visual: {
           style: {
