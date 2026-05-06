@@ -13,10 +13,14 @@ export async function GET() {
     );
   }
 
-  const authorizeUrl = new URL("https://www.bling.com.br/oauth/authorize");
-  authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("client_id", clientId);
-  authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+  // new URL() normaliza o path para lowercase — montamos a string manualmente
+  // para preservar a capitalização exata exigida pelo Bling (OAuth/Authorize).
+  const authorizeUrl =
+    `https://www.bling.com.br/OAuth/Authorize` +
+    `?response_type=code` +
+    `&client_id=${clientId}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&scope=`;
 
-  return NextResponse.redirect(authorizeUrl.toString());
+  return NextResponse.redirect(authorizeUrl);
 }
