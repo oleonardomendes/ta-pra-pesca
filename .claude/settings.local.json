@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "mcp__claude_ai_Vercel__deploy_to_vercel"
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "PowerShell(where.exe node 2>$null; where.exe npm 2>$null; $env:PATH)"
     ]
   }
 }
