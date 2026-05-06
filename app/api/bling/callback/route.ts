@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = ["gru1"];
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");

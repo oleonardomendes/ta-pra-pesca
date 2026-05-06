@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { blingFetch } from "@/lib/bling";
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = ["gru1"];
 export const revalidate = 300; // 5 minutos
 
 interface BlingEstoque {

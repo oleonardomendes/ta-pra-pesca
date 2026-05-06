@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "app/api/bling/produtos/route.ts": {
+      "regions": ["gru1"]
+    },
+    "app/api/bling/callback/route.ts": {
+      "regions": ["gru1"]
+    },
+    "app/api/bling/auth/route.ts": {
+      "regions": ["gru1"]
+    }
+  }
+}
