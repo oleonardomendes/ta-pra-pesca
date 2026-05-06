@@ -10,9 +10,9 @@ export function getBlingToken(): string {
 }
 
 export async function refreshBlingToken(): Promise<string> {
-  const credentials = Buffer.from(
+  const credentials = btoa(
     `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
-  ).toString("base64");
+  );
 
   const res = await fetch(BLING_TOKEN_URL, {
     method: "POST",

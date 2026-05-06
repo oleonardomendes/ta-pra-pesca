@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const preferredRegion = ["gru1"];
+export const runtime = "edge";
+export const preferredRegion = "gru1";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -10,9 +11,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Parâmetro 'code' ausente" }, { status: 400 });
   }
 
-  const credentials = Buffer.from(
+  const credentials = btoa(
     `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
-  ).toString("base64");
+  );
 
   const res = await fetch("https://www.bling.com.br/Api/v3/oauth/token", {
     method: "POST",

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const preferredRegion = ["gru1"];
+export const runtime = "edge";
+export const preferredRegion = "gru1";
 
 export async function GET() {
   const clientId = process.env.BLING_CLIENT_ID;
