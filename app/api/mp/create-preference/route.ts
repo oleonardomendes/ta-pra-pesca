@@ -11,18 +11,28 @@ const client = new MercadoPagoConfig({ accessToken })
 
 export async function POST(req: Request) {
   try {
-    const { kitId, kitNome, kitPreco, backUrls } = await req.json()
+    const { kitId, kitNome, kitPreco, backUrls, items: cartItems } = await req.json()
 
-    const preference = new Preference(client)
-    const result = await preference.create({
-      body: {
-        items: [{
+    const mpItems = cartItems
+      ? cartItems.map((i: { id: number; nome: string; preco: number; quantidade: number }) => ({
+          id: String(i.id),
+          title: i.nome,
+          quantity: i.quantidade,
+          unit_price: Number(i.preco),
+          currency_id: 'BRL',
+        }))
+      : [{
           id: String(kitId),
           title: kitNome,
           quantity: 1,
           unit_price: Number(kitPreco),
           currency_id: 'BRL',
-        }],
+        }]
+
+    const preference = new Preference(client)
+    const result = await preference.create({
+      body: {
+        items: mpItems,
         back_urls: backUrls ?? {
           success: 'https://taprapesca.com.br/kits/obrigado',
           failure: 'https://taprapesca.com.br/kits',

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import GTM from "@/components/GTM";
 import ScrollReveal from "@/components/ScrollReveal";
+import { CartProvider } from "@/contexts/CartContext";
 
 export const metadata: Metadata = {
   title: "Tá Pra Pesca — Kits Completos de Pesca em Água Doce",
@@ -42,9 +43,11 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body>
         {/* GTM só renderiza quando NEXT_PUBLIC_GTM_ID estiver preenchido (Fase 3) */}
-        {gtmId && <GTM gtmId={gtmId} />}
-        {children}
-        <ScrollReveal />
+        <CartProvider>
+          {gtmId && <GTM gtmId={gtmId} />}
+          {children}
+          <ScrollReveal />
+        </CartProvider>
       </body>
     </html>
   );

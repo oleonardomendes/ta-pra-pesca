@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import ProdutoCard from "@/components/ProdutoCard";
 
 export interface BlingProduto {
   id: number;
@@ -18,7 +18,8 @@ export interface BlingProduto {
 
 interface Props {
   produtos: BlingProduto[];
-  waNumber: string;
+  waNumber?: string;
+  initialCategoria?: string;
 }
 
 const KEYWORDS = ["Vara", "Molinete", "Carretilha", "Linha"];
@@ -52,8 +53,8 @@ function ImageWithFallback({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-export default function FiltroCategorias({ produtos }: Props) {
-  const [selected, setSelected] = useState("Todos");
+export default function FiltroCategorias({ produtos, initialCategoria = "" }: Props) {
+  const [selected, setSelected] = useState(initialCategoria || "Todos");
 
   const categoriasDisponiveis = [
     "Todos",
@@ -96,10 +97,7 @@ export default function FiltroCategorias({ produtos }: Props) {
           </p>
         ) : (
           <div className="produtos-grid">
-            {filtered.map((produto, index) => {
-              const checkoutHref = `/checkout?id=${produto.id}&nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}`;
-              const isLast = index === filtered.length - 1;
-
+            {filtered.map((produto) => {
               return (
                 <article key={produto.id} className="produto-card">
                   <div className="card-img-wrapper">
@@ -114,16 +112,12 @@ export default function FiltroCategorias({ produtos }: Props) {
                   <div className="card-body">
                     <p className="card-nome">{produto.nome}</p>
                     <p className="card-preco">{fmt(produto.preco)}</p>
-                    <div className="card-actions">
-                      <Link href={checkoutHref} className="card-btn-wa">
-                        Comprar agora
-                      </Link>
-                      {isLast && (
-                        <Link href="/kits" className="card-btn-kits">
-                          Ver kits completos
-                        </Link>
-                      )}
-                    </div>
+                    <ProdutoCard
+                      id={produto.id}
+                      nome={produto.nome}
+                      preco={produto.preco}
+                      imagemURL={produto.imagemURL}
+                    />
                   </div>
                 </article>
               );
@@ -241,37 +235,33 @@ const filtroStyles = `
     letter-spacing: .02em;
     margin-bottom: 16px;
   }
-  .card-actions { display: flex; flex-direction: column; gap: 8px; }
-  .card-btn-wa {
-    display: block;
-    text-align: center;
-    background: var(--g700);
-    color: #fff;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 12px 16px;
-    border-radius: 50px;
+  .pcd-actions { display: flex; flex-direction: column; gap: 8px; }
+  .pcd-btn-add {
+    display: block; width: 100%; text-align: center;
+    background: transparent;
+    border: 1.5px solid var(--g700);
+    color: var(--g700);
+    font-family: var(--ff-body);
+    font-weight: 600; font-size: 13px;
+    padding: 11px 16px; border-radius: 50px;
+    cursor: pointer; transition: all .2s;
+  }
+  .pcd-btn-add:hover {
+    background: var(--g50);
+    border-color: var(--g900);
+    color: var(--g900);
+  }
+  .pcd-btn-comprar {
+    display: block; text-align: center;
+    background: var(--g700); color: #fff;
+    font-weight: 700; font-size: 13px;
+    padding: 12px 16px; border-radius: 50px;
     box-shadow: var(--sh-btn-g);
     transition: background .2s, transform .2s;
   }
-  .card-btn-wa:hover {
+  .pcd-btn-comprar:hover {
     background: var(--g900);
     transform: translateY(-2px);
-  }
-  .card-btn-kits {
-    display: block;
-    text-align: center;
-    border: 1.5px solid var(--border);
-    color: var(--g700);
-    font-weight: 600;
-    font-size: 13px;
-    padding: 11px 16px;
-    border-radius: 50px;
-    transition: all .2s;
-  }
-  .card-btn-kits:hover {
-    border-color: var(--g700);
-    background: var(--g50);
   }
   @media (max-width: 1024px) {
     .produtos-grid { grid-template-columns: repeat(2, 1fr); }
