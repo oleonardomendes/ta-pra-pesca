@@ -52,7 +52,7 @@ function ImageWithFallback({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-export default function FiltroCategorias({ produtos, waNumber }: Props) {
+export default function FiltroCategorias({ produtos }: Props) {
   const [selected, setSelected] = useState("Todos");
 
   const categoriasDisponiveis = [
@@ -97,9 +97,7 @@ export default function FiltroCategorias({ produtos, waNumber }: Props) {
         ) : (
           <div className="produtos-grid">
             {filtered.map((produto, index) => {
-              const waText = encodeURIComponent(
-                `Olá! Tenho interesse: ${produto.nome}`
-              );
+              const checkoutHref = `/checkout?id=${produto.id}&nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}`;
               const isLast = index === filtered.length - 1;
 
               return (
@@ -117,14 +115,9 @@ export default function FiltroCategorias({ produtos, waNumber }: Props) {
                     <p className="card-nome">{produto.nome}</p>
                     <p className="card-preco">{fmt(produto.preco)}</p>
                     <div className="card-actions">
-                      <a
-                        href={`https://wa.me/${waNumber}?text=${waText}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="card-btn-wa"
-                      >
-                        Comprar pelo WhatsApp
-                      </a>
+                      <Link href={checkoutHref} className="card-btn-wa">
+                        Comprar agora
+                      </Link>
                       {isLast && (
                         <Link href="/kits" className="card-btn-kits">
                           Ver kits completos
