@@ -28,6 +28,23 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
   )
 
   return (
+    <>
+    <div style={{
+      background: '#E8F7F2',
+      border: '1px solid #1D9E75',
+      borderRadius: '8px',
+      padding: '10px 16px',
+      marginBottom: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '13px',
+      fontWeight: '600',
+      color: '#0F5C45',
+    }}>
+      <span>⚡</span>
+      <span>Pague com PIX e ganhe <strong>5% de desconto</strong> — à vista e na hora!</span>
+    </div>
     <Payment
       initialization={{
         amount: kitPreco,
@@ -61,5 +78,6 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
       }}
       onError={(error) => console.error('MP Brick error:', error)}
     />
+    </>
   )
 }

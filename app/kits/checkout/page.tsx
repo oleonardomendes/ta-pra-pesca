@@ -132,6 +132,9 @@ export default async function CheckoutPage({ searchParams }: Props) {
                   R$ {kit.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
+              <div style={{ fontSize: '13px', color: '#0F5C45', fontWeight: '600', marginTop: '8px' }}>
+                ⚡ Com PIX: R$ {(kit.price * 0.95).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
             </div>
 
             <div className="checkout-brick-wrap">

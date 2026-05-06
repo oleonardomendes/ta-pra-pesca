@@ -87,6 +87,9 @@ export default function CartCheckoutPage() {
                 <span>Total</span>
                 <span className="cc-total-val">{fmt(totalPreco)}</span>
               </div>
+              <div style={{ fontSize: '13px', color: '#0F5C45', fontWeight: '600', marginTop: '8px' }}>
+                ⚡ Com PIX: R$ {(totalPreco * 0.95).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
             </div>
 
             {/* Brick */}
