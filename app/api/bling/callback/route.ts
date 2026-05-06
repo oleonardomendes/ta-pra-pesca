@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
   );
 
-  const res = await fetch("https://www.bling.com.br/Api/v3/oauth/token", {
+  const res = await fetch("https://api.bling.com.br/Api/v3/oauth/token", {
     method: "POST",
     headers: {
       Authorization: `Basic ${credentials}`,

@@ -1,5 +1,5 @@
-const BLING_BASE = "https://www.bling.com.br/Api/v3";
-const BLING_TOKEN_URL = "https://www.bling.com.br/Api/v3/oauth/token";
+const BLING_BASE = "https://api.bling.com.br/Api/v3";
+const BLING_TOKEN_URL = "https://api.bling.com.br/Api/v3/oauth/token";
 
 // Caches the refreshed token for the lifetime of the serverless invocation.
 // Between cold starts o token é relido do env.

@@ -9,7 +9,7 @@ export async function GET() {
   }
 
   try {
-    const res = await fetch('https://www.bling.com.br/Api/v3/produtos?limite=5', {
+    const res = await fetch('https://api.bling.com.br/Api/v3/produtos?limite=5', {
       headers: {
         'Authorization': `Bearer ${token.trim()}`,
         'Accept': 'application/json',
