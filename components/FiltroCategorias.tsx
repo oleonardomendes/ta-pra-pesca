@@ -41,9 +41,12 @@ function ImageWithFallback({ src, alt }: { src: string; alt: string }) {
     <Image
       src={src}
       alt={alt}
-      width={400}
-      height={400}
+      width={600}
+      height={600}
+      quality={85}
+      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
       className="card-img"
+      style={{ objectFit: "contain", background: "#E8F7F2" }}
       onError={() => setErr(true)}
     />
   );
@@ -205,7 +208,6 @@ const filtroStyles = `
   .card-img {
     width: 100% !important;
     height: 220px !important;
-    object-fit: cover;
     display: block;
   }
   .card-img-fallback {

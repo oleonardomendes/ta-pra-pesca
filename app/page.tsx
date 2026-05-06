@@ -30,7 +30,7 @@ export default async function Home() {
       codigo: p.codigo,
       preco: p.preco,
       precoCusto: p.precoCusto,
-      imagemURL: p.imagemThumbnail || p.imagemURL || "",
+      imagemURL: p.imagemURL || p.imagemThumbnail || "",
       estoque: p.estoqueAtual ?? p.estoque ?? 0,
       descricao: p.descricaoComplementar || "",
       categoria: p.categoria?.descricao || "",

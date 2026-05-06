@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "orgbling.s3.amazonaws.com",
+        port: "",
+        pathname: "/**",
       },
     ],
   },
