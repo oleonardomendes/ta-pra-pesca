@@ -43,13 +43,6 @@ export async function POST(req: Request) {
           installments: 12,
           default_installments: 1,
         },
-        discounts: [
-          {
-            name: '5% de desconto no PIX',
-            percentage: 5,
-            payment_method_id: 'pix',
-          },
-        ],
         auto_return: 'approved',
         statement_descriptor: 'TA PRA PESCA',
       }
