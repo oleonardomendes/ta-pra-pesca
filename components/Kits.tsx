@@ -1,4 +1,5 @@
 import { kits } from "@/data/kits";
+import Link from "next/link";
 
 function CheckIcon() {
   return (
@@ -148,14 +149,13 @@ export default function Kits() {
                 </div>
               )}
 
-              {/* URL do checkout vinda do .env — troca automaticamente quando configurar o Yampi */}
-              <a
-                href={process.env[`NEXT_PUBLIC_KIT${kit.id}_URL`] || "#"}
+              <Link
+                href={`/kits/checkout?kit=${kit.id}`}
                 className={`kit-cta c-${kit.ctaStyle}`}
                 aria-label={`Comprar ${kit.name} ${kit.nameBreak}`}
               >
                 Quero esse kit →
-              </a>
+              </Link>
             </article>
           ))}
         </div>
