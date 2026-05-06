@@ -13,17 +13,18 @@ export async function GET(request: NextRequest) {
     `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
   ).toString("base64");
 
-  const res = await fetch("https://www.bling.com.br/oauth/token", {
+  const res = await fetch("https://www.bling.com.br/Api/v3/oauth/token", {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
       Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
     },
     body: new URLSearchParams({
       grant_type: "authorization_code",
       code,
-      redirect_uri: process.env.BLING_REDIRECT_URI ?? "",
-    }),
+      redirect_uri: process.env.BLING_REDIRECT_URI || "",
+    }).toString(),
   });
 
   if (!res.ok) {
