@@ -1,9 +1,9 @@
 import { kits } from '@/data/kits'
 import { notFound } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import Link from 'next/link'
 
-const MPCheckoutBrick = dynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
+const MPCheckoutBrick = nextDynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
 
 export const dynamic = 'force-dynamic'
 

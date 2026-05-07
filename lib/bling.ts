@@ -1,15 +1,25 @@
 const BLING_BASE = "https://api.bling.com.br/Api/v3";
 const BLING_TOKEN_URL = "https://api.bling.com.br/Api/v3/oauth/token";
 
-// Caches the refreshed token for the lifetime of the serverless invocation.
-// Between cold starts o token é relido do env.
+// Caches tokens for the lifetime of the serverless invocation.
+// On cold starts, tokens are re-read from env vars.
 let cachedAccessToken: string | null = null;
+let cachedRefreshToken: string | null = null;
 
 export function getBlingToken(): string {
   return cachedAccessToken ?? process.env.BLING_ACCESS_TOKEN ?? "";
 }
 
+function getRefreshToken(): string {
+  return cachedRefreshToken ?? process.env.BLING_REFRESH_TOKEN ?? "";
+}
+
 export async function refreshBlingToken(): Promise<string> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) {
+    throw new Error("Bling refresh falhou: BLING_REFRESH_TOKEN não configurado");
+  }
+
   const credentials = btoa(
     `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
   );
@@ -22,17 +32,29 @@ export async function refreshBlingToken(): Promise<string> {
     },
     body: new URLSearchParams({
       grant_type: "refresh_token",
-      refresh_token: process.env.BLING_REFRESH_TOKEN ?? "",
+      refresh_token: refreshToken,
     }),
   });
 
   if (!res.ok) {
     const detail = await res.text();
+    console.error("[bling] refresh_token usado:", refreshToken.slice(0, 20) + "...");
+    console.error("[bling] ⚠️  REFRESH TOKEN INVÁLIDO — acesse /api/bling/auth para reautorizar");
     throw new Error(`Bling refresh falhou (${res.status}): ${detail}`);
   }
 
   const data = await res.json();
   cachedAccessToken = data.access_token as string;
+
+  // Bling retorna um novo refresh_token a cada renovação — cacheia na memória.
+  // ⚠️  AÇÃO NECESSÁRIA: atualize BLING_REFRESH_TOKEN no Vercel com o valor abaixo.
+  if (data.refresh_token && data.refresh_token !== refreshToken) {
+    cachedRefreshToken = data.refresh_token as string;
+    console.warn("[bling] ⚠️  NOVO REFRESH TOKEN GERADO — atualize no Vercel:");
+    console.warn("[bling] BLING_REFRESH_TOKEN =", data.refresh_token);
+  }
+
+  console.log("[bling] token renovado com sucesso");
   return cachedAccessToken;
 }
 
