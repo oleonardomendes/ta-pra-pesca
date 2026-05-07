@@ -3,7 +3,9 @@
 import { useCart } from '@/contexts/CartContext'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import MPCheckoutBrick from '@/components/MPCheckoutBrick'
+import dynamic from 'next/dynamic'
+
+const MPCheckoutBrick = dynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
 import Link from 'next/link'
 
 const fmt = (n: number) =>
