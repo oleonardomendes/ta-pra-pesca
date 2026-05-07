@@ -40,10 +40,10 @@ export async function blingFetch(
   endpoint: string,
   options?: RequestInit
 ): Promise<Response> {
-  const makeRequest = async (token: string) => {
+  const makeRequest = async (token: string, attempt: number) => {
     const url = `${BLING_BASE}${endpoint}`;
-    console.log("[bling] URL:", url);
-    console.log("[bling] Authorization: Bearer", token.slice(0, 20) + "...");
+    console.log(`[bling][attempt:${attempt}] GET ${url}`);
+    console.log(`[bling][attempt:${attempt}] token prefix: ${token.slice(0, 20)}...`);
 
     const res = await fetch(url, {
       ...options,
@@ -54,20 +54,31 @@ export async function blingFetch(
       },
     });
 
-    console.log("[bling] status:", res.status);
+    console.log(`[bling][attempt:${attempt}] status: ${res.status}`);
+
     if (!res.ok) {
       const body = await res.clone().text();
-      console.log("[bling] error body:", body);
+      console.error(
+        `[bling][attempt:${attempt}] ERRO status=${res.status} endpoint=${endpoint}`
+      );
+      console.error(`[bling][attempt:${attempt}] error body:`, body);
     }
 
     return res;
   };
 
-  const firstRes = await makeRequest(getBlingToken());
+  const firstRes = await makeRequest(getBlingToken(), 1);
 
   if (firstRes.status !== 401) return firstRes;
 
   // Token expirado — renova e tenta uma vez mais
-  const newToken = await refreshBlingToken();
-  return makeRequest(newToken);
+  console.log("[bling] 401 recebido — iniciando refresh do token...");
+  try {
+    const newToken = await refreshBlingToken();
+    console.log("[bling] token renovado com sucesso, retry da request...");
+    return makeRequest(newToken, 2);
+  } catch (refreshErr) {
+    console.error("[bling] falha ao renovar token:", refreshErr);
+    return firstRes;
+  }
 }
