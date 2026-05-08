@@ -27,8 +27,8 @@ export default async function Home({ searchParams = {} }: HomeProps) {
   let produtos: BlingProduto[] = [];
 
   try {
-    const res = await blingFetch("/produtos?limite=100&pagina=1");
-    const data = res.ok ? await res.json() : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await blingFetch("/produtos?limite=100&pagina=1");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     produtos = data?.data?.map((p: any) => ({
       id: p.id,

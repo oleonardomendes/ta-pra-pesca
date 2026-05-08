@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { blingFetch } from "@/lib/bling";
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 export const preferredRegion = "gru1";
 export const revalidate = 300; // 5 minutos
 
@@ -30,20 +29,7 @@ interface BlingProduto {
 
 export async function GET() {
   try {
-    if (!process.env.BLING_ACCESS_TOKEN) {
-      return NextResponse.json({ produtos: [], configurado: false });
-    }
-
-    const res = await blingFetch("/produtos?limite=100&pagina=1&situacao=A");
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Erro ao buscar produtos no Bling", status: res.status },
-        { status: 502 }
-      );
-    }
-
-    const body = await res.json();
+    const body = await blingFetch("/produtos?limite=100&pagina=1&situacao=A");
     const raw: BlingProduto[] = body.data ?? [];
 
     const produtos = raw
