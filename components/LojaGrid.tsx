@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import ProdutoCard from '@/components/ProdutoCard'
 import FiltroCategorias from '@/components/FiltroCategorias'
-import ProdutoModal from '@/components/ProdutoModal'
 import { useCart } from '@/contexts/CartContext'
 
 export interface BlingProduto {
@@ -58,17 +57,7 @@ function ImageWithFallback({ src, alt, height = 260 }: { src: string; alt: strin
 
 export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
   const [categoriaAtiva, setCategoriaAtiva] = useState(initialCategoria || 'Todos')
-  const [produtoModal, setProdutoModal] = useState<BlingProduto | null>(null)
   const { addItem } = useCart()
-
-  useEffect(() => {
-    if (produtoModal) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => { document.body.style.overflow = '' }
-  }, [produtoModal])
 
   const destaques = produtos.filter(p => p.destaque)
 
@@ -95,15 +84,15 @@ export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
               const checkoutHref = `/checkout?id=${produto.id}&nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}`
               return (
                 <article key={produto.id} className="dest-card">
-                  <div className="dest-img-wrapper">
+                  <Link href={`/produto/${produto.codigo}`} className="dest-img-wrapper">
                     <ImageWithFallback src={imgSrc} alt={produto.nome} />
                     <span className="dest-badge">⭐ Destaque</span>
                     {produto.estoque <= 5 && (
                       <span className="dest-badge-estoque">Estoque baixo</span>
                     )}
-                  </div>
+                  </Link>
                   <div className="dest-body">
-                    <p className="dest-nome">{produto.nome}</p>
+                    <Link href={`/produto/${produto.codigo}`} className="dest-nome">{produto.nome}</Link>
                     {produto.descricao && <p className="dest-desc">{produto.descricao}</p>}
                     <p className="dest-preco">{fmt(produto.preco)}</p>
                     <div className="pcd-actions">
@@ -147,36 +136,19 @@ export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
                 <ProdutoCard
                   id={produto.id}
                   nome={produto.nome}
+                  codigo={produto.codigo}
                   preco={produto.preco}
                   imagemURL={produto.imagemURL}
                   imagens={produto.imagens}
                   destaque={produto.destaque}
                   estoque={produto.estoque}
                   descricao={produto.descricao}
-                  onVerDetalhes={() => setProdutoModal(produto)}
                 />
               </article>
             ))}
           </div>
         )}
       </div>
-
-      {produtoModal && (
-        <ProdutoModal
-          produto={{
-            id: produtoModal.id,
-            nome: produtoModal.nome,
-            codigo: produtoModal.codigo,
-            preco: produtoModal.preco,
-            descricao: produtoModal.descricao || undefined,
-            imagens: produtoModal.imagens,
-            video_url: produtoModal.video_url ?? undefined,
-            estoque: produtoModal.estoque,
-            destaque: produtoModal.destaque ?? false,
-          }}
-          onClose={() => setProdutoModal(null)}
-        />
-      )}
     </>
   )
 }
@@ -210,7 +182,9 @@ const gridStyles = `
     transition: transform .22s, box-shadow .22s;
   }
   .dest-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(10,61,43,.12); }
-  .dest-img-wrapper { position: relative; width: 100%; overflow: hidden; }
+  .dest-img-wrapper {
+    display: block; position: relative; width: 100%; overflow: hidden;
+  }
   .dest-badge {
     position: absolute; top: 12px; left: 12px;
     background: #f59e0b; color: #fff;
@@ -225,11 +199,14 @@ const gridStyles = `
   }
   .dest-body { padding: 20px; }
   .dest-nome {
+    display: block;
     font-size: 15px; font-weight: 600; color: var(--dark);
     margin-bottom: 6px;
     display: -webkit-box; -webkit-line-clamp: 2;
     -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45;
+    text-decoration: none; transition: color .15s;
   }
+  .dest-nome:hover { color: var(--g700); }
   .dest-desc {
     font-size: 12px; color: var(--muted); margin-bottom: 8px;
     display: -webkit-box; -webkit-line-clamp: 2;

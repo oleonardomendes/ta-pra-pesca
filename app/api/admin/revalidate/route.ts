@@ -6,5 +6,6 @@ export const dynamic = 'force-dynamic'
 export async function POST() {
   revalidatePath('/')
   revalidatePath('/kits')
+  revalidatePath('/produto/[codigo]', 'page')
   return NextResponse.json({ revalidated: true })
 }

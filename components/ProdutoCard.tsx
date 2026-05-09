@@ -10,41 +10,41 @@ const fmt = (n: number) =>
 interface Props {
   id: number
   nome: string
+  codigo: string
   preco: number
   imagemURL: string
   imagens?: string[]
   destaque?: boolean
   estoque?: number
   descricao?: string
-  onVerDetalhes?: () => void
 }
 
 export default function ProdutoCard({
   id,
   nome,
+  codigo,
   preco,
   imagemURL,
   imagens = [],
   destaque,
   estoque,
   descricao,
-  onVerDetalhes,
 }: Props) {
   const { addItem } = useCart()
   const [imgIndex, setImgIndex] = useState(0)
 
   const imgs = imagens.length > 0 ? imagens : [imagemURL].filter(Boolean)
   const temMultiplas = imgs.length > 1
-
   const checkoutHref = `/checkout?id=${id}&nome=${encodeURIComponent(nome)}&preco=${preco}`
   const imgAtual = imgs[imgIndex] || ''
+  const produtoHref = `/produto/${codigo}`
 
   return (
     <>
       <style>{styles}</style>
 
-      {/* ── Área da imagem com carrossel ─── */}
-      <div className="pcd-img-area">
+      {/* Área da imagem com carrossel */}
+      <Link href={produtoHref} className="pcd-img-area">
         {imgAtual ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -60,11 +60,11 @@ export default function ProdutoCard({
           <>
             <button
               className="pcd-arrow pcd-arrow-l"
-              onClick={e => { e.stopPropagation(); setImgIndex(i => (i - 1 + imgs.length) % imgs.length) }}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i => (i - 1 + imgs.length) % imgs.length) }}
             >‹</button>
             <button
               className="pcd-arrow pcd-arrow-r"
-              onClick={e => { e.stopPropagation(); setImgIndex(i => (i + 1) % imgs.length) }}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i => (i + 1) % imgs.length) }}
             >›</button>
           </>
         )}
@@ -74,7 +74,7 @@ export default function ProdutoCard({
             {imgs.map((_, i) => (
               <div
                 key={i}
-                onClick={e => { e.stopPropagation(); setImgIndex(i) }}
+                onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i) }}
                 style={{
                   width: i === imgIndex ? 16 : 6,
                   height: 6,
@@ -89,22 +89,15 @@ export default function ProdutoCard({
           </div>
         )}
 
-        {destaque && (
-          <div className="pcd-badge-dest">⭐ Destaque</div>
-        )}
-
+        {destaque && <div className="pcd-badge-dest">⭐ Destaque</div>}
         {estoque !== undefined && estoque <= 5 && (
           <div className="pcd-badge-estoque">Estoque baixo</div>
         )}
+      </Link>
 
-        <div className="ver-detalhes-overlay" onClick={() => onVerDetalhes?.()}>
-          <span className="ver-detalhes-label">Ver detalhes</span>
-        </div>
-      </div>
-
-      {/* ── Corpo do card ─────────────────── */}
+      {/* Corpo do card */}
       <div className="pcd-body">
-        <p className="pcd-nome">{nome}</p>
+        <Link href={produtoHref} className="pcd-nome">{nome}</Link>
         {descricao && <p className="pcd-desc">{descricao}</p>}
         <p className="pcd-preco">{fmt(preco)}</p>
 
@@ -126,6 +119,7 @@ export default function ProdutoCard({
 
 const styles = `
   .pcd-img-area {
+    display: block;
     position: relative; aspect-ratio: 1; overflow: hidden;
     background: var(--g50);
   }
@@ -161,29 +155,16 @@ const styles = `
     font-size: 10px; font-weight: 700;
     padding: 3px 10px; border-radius: 20px; z-index: 2;
   }
-  .ver-detalhes-overlay {
-    position: absolute; inset: 0;
-    background: rgba(10,61,43,0);
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; transition: all .2s; cursor: pointer; z-index: 1;
-  }
-  .ver-detalhes-overlay:hover {
-    background: rgba(10,61,43,.15) !important;
-    opacity: 1 !important;
-  }
-  .ver-detalhes-label {
-    background: rgba(10,61,43,.85); color: #fff;
-    font-size: 12px; font-weight: 700;
-    padding: 8px 16px; border-radius: 50px;
-    letter-spacing: .04em; pointer-events: none;
-  }
   .pcd-body { padding: 20px; }
   .pcd-nome {
+    display: block;
     font-size: 15px; font-weight: 600; color: var(--dark);
     margin-bottom: 8px;
     display: -webkit-box; -webkit-line-clamp: 2;
     -webkit-box-orient: vertical; overflow: hidden; line-height: 1.45;
+    text-decoration: none; transition: color .15s;
   }
+  .pcd-nome:hover { color: var(--g700); }
   .pcd-desc {
     font-size: 12px; color: var(--muted); margin-bottom: 8px;
     display: -webkit-box; -webkit-line-clamp: 2;
