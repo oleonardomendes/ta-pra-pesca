@@ -54,6 +54,8 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
   const [imagens, setImagens] = useState<string[]>(customizacao?.imagens ?? [])
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
   const [pendingIdx, setPendingIdx] = useState<number | null>(null)
+  const [salvandoImagens, setSalvandoImagens] = useState(false)
+  const [imagensSalvas, setImagensSalvas] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Video
@@ -109,22 +111,19 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('blingCodigo', produto.codigo)
-    fd.append('index', String(pendingIdx))
     const res = await fetch('/api/admin/produtos/imagem', { method: 'POST', body: fd })
     const data = await res.json()
-    if (data.imagens) setImagens([...data.imagens])
+    if (data.url) {
+      const novas = [...imagens]
+      novas[pendingIdx] = data.url
+      setImagens(novas)
+    }
     setUploadingIdx(null)
     setPendingIdx(null)
   }
 
-  const handleDeleteImg = async (idx: number) => {
-    const res = await fetch('/api/admin/produtos/imagem/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blingCodigo: produto.codigo, index: idx }),
-    })
-    const data = await res.json()
-    if (data.imagens) setImagens([...data.imagens])
+  const handleDeleteImg = (idx: number) => {
+    setImagens(imagens.filter((_, i) => i !== idx))
   }
 
   /* ── Save video ────────────────────────────────────────── */
@@ -257,6 +256,31 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
                 })}
               </div>
               <p className="pac-hint">A primeira imagem é a principal exibida na loja</p>
+              <div className="pac-save-row">
+                <button
+                  className={`pac-btn pac-btn-full${imagensSalvas ? ' pac-btn-saved' : ''}`}
+                  disabled={salvandoImagens}
+                  onClick={async () => {
+                    setSalvandoImagens(true)
+                    try {
+                      await fetch('/api/admin/produtos/customizacao', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          bling_codigo: produto.codigo,
+                          imagens: imagens.filter(Boolean),
+                        }),
+                      })
+                      setImagensSalvas(true)
+                      setTimeout(() => setImagensSalvas(false), 3000)
+                    } finally {
+                      setSalvandoImagens(false)
+                    }
+                  }}
+                >
+                  {salvandoImagens ? 'Salvando…' : imagensSalvas ? '✓ Imagens salvas!' : 'Salvar imagens'}
+                </button>
+              </div>
             </div>
 
             {/* Seção 3: Vídeo */}
@@ -384,6 +408,9 @@ const styles = `
   .pac-btn:disabled { opacity: .55; cursor: not-allowed; }
   .pac-ok { font-size: 12px; color: #16a34a; font-weight: 700; }
   .pac-err { font-size: 12px; color: #b91c1c; font-weight: 700; }
+  .pac-btn-full { width: 100%; justify-content: center; }
+  .pac-btn-saved { background: #16a34a; }
+  .pac-btn-saved:hover:not(:disabled) { background: #15803d; }
 
   /* Image grid */
   .pac-img-grid {

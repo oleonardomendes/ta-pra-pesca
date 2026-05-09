@@ -33,8 +33,8 @@ export default async function Home({ searchParams = {} }: HomeProps) {
     produtos = (data?.data ?? []).map((p: any) => {
       const custom = customMap[p.codigo] || null;
       const blingImg = String(p.imagemURL || p.imagemThumbnail || "");
-      const imagens: string[] = custom?.imagens?.length
-        ? custom.imagens
+      const imagens: string[] = custom?.imagens?.filter(Boolean).length
+        ? custom.imagens.filter(Boolean)
         : [blingImg].filter(Boolean);
 
       return {
