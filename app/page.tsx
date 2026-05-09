@@ -1,14 +1,23 @@
-import FiltroCategorias from "@/components/FiltroCategorias";
+import LojaGrid from "@/components/LojaGrid";
+import type { BlingProduto } from "@/components/LojaGrid";
 import Newsletter from "@/components/Newsletter";
 import StoreFooter from "@/components/StoreFooter";
 import StoreHeader from "@/components/StoreHeader";
 import Link from "next/link";
 import { blingFetch } from "@/lib/bling";
 import { supabase } from "@/lib/supabase";
-import type { BlingProduto } from "@/components/FiltroCategorias";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+function detectarCategoria(nome: string): string {
+  const n = nome.toLowerCase();
+  if (n.includes("carretilha")) return "Carretilha";
+  if (n.includes("molinete")) return "Molinete";
+  if (n.includes("linha") || n.includes("nylon")) return "Linha";
+  if (n.includes("vara")) return "Vara";
+  return "Outros";
+}
 
 interface HomeProps {
   searchParams?: { busca?: string; categoria?: string };
@@ -21,7 +30,9 @@ export default async function Home({ searchParams = {} }: HomeProps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [data, { data: customizacoes }] = await Promise.all([
       blingFetch("/produtos?limite=100&pagina=1"),
-      supabase.from("produto_customizacoes").select("*"),
+      supabase
+        .from("produto_customizacoes")
+        .select("bling_codigo, nome_custom, preco_custom, imagens, video_url, destaque, descricao_custom"),
     ]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,21 +49,26 @@ export default async function Home({ searchParams = {} }: HomeProps) {
         ? custom.imagens.filter(Boolean)
         : [blingImg].filter(Boolean);
 
+      const imagemPrincipal =
+        (custom?.imagens?.filter(Boolean) || []).length > 0
+          ? custom.imagens.filter(Boolean)[0]
+          : blingImg;
+
       return {
         id: p.id,
         nome: String(custom?.nome_custom || p.nome || ""),
         codigo: String(p.codigo || ""),
         preco: Number(custom?.preco_custom || p.preco || 0),
         precoCusto: Number(p.precoCusto || 0),
-        imagemURL: imagens[0] || blingImg,
+        imagemURL: imagemPrincipal,
         imagens,
         estoque: Number(
-          typeof p.estoqueAtual === 'object'
+          typeof p.estoqueAtual === "object"
             ? p.estoqueAtual?.saldoVirtualTotal ?? 0
             : p.estoqueAtual ?? p.estoque ?? 0
         ),
         descricao: String(custom?.descricao_custom || p.descricaoComplementar || ""),
-        categoria: String(p.categoria?.descricao || ""),
+        categoria: detectarCategoria(String(p.nome || "")),
         video_url: custom?.video_url || null,
         destaque: Boolean(custom?.destaque),
       };
@@ -90,7 +106,7 @@ export default async function Home({ searchParams = {} }: HomeProps) {
         </p>
       </section>
 
-      <FiltroCategorias produtos={produtos} initialCategoria={initialCategoria} />
+      <LojaGrid produtos={produtos} initialCategoria={initialCategoria} />
 
       <Link href="/kits" className="loja-banner">
         Quer economizar? Veja nossos kits completos →
@@ -124,8 +140,7 @@ const pageStyles = `
   .loja-banner {
     display: block; background: var(--g700); color: #fff;
     text-align: center; padding: 28px 6%;
-    font-size: 17px; font-weight: 700;
-    transition: background .2s;
+    font-size: 17px; font-weight: 700; transition: background .2s;
   }
   .loja-banner:hover { background: var(--g900); }
 `;
