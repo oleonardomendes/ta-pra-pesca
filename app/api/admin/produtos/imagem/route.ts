@@ -6,6 +6,7 @@ export async function POST(req: Request) {
   const formData = await req.formData()
   const file = formData.get('file') as File
   const blingCodigo = formData.get('blingCodigo') as string
+  const index = formData.get('index')
 
   if (!file || !blingCodigo) {
     return Response.json({ error: 'Dados incompletos' }, { status: 400 })
@@ -32,6 +33,28 @@ export async function POST(req: Request) {
     .from('produto-imagens')
     .getPublicUrl(filename)
 
+  // Se recebeu index, atualiza array de imagens em produto_customizacoes
+  if (index !== null && index !== undefined) {
+    const { data: custom } = await supabase
+      .from('produto_customizacoes')
+      .select('imagens')
+      .eq('bling_codigo', blingCodigo)
+      .single()
+
+    const imagens: string[] = custom?.imagens || []
+    imagens[Number(index)] = publicUrl
+
+    await supabase
+      .from('produto_customizacoes')
+      .upsert(
+        { bling_codigo: blingCodigo, imagens, updated_at: new Date().toISOString() },
+        { onConflict: 'bling_codigo' }
+      )
+
+    return Response.json({ url: publicUrl, imagens })
+  }
+
+  // Fallback: comportamento original — salva imagem principal em produto_imagens
   await supabase.from('produto_imagens').upsert(
     { bling_codigo: blingCodigo, imagem_url: publicUrl, updated_at: new Date().toISOString() },
     { onConflict: 'bling_codigo' }
