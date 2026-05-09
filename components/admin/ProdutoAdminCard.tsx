@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Image from 'next/image'
 
 interface Produto {
   id: number
@@ -25,8 +24,6 @@ interface Props {
   produto: Produto
   customizacao: Customizacao | null
 }
-
-const MAX_SLOTS = 5
 
 function getEmbedUrl(url: string): string | null {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
@@ -52,11 +49,11 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
 
   // Images
   const [imagens, setImagens] = useState<string[]>(customizacao?.imagens ?? [])
-  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null)
-  const [pendingIdx, setPendingIdx] = useState<number | null>(null)
+  const [uploadando, setUploadando] = useState(false)
   const [salvandoImagens, setSalvandoImagens] = useState(false)
   const [imagensSalvas, setImagensSalvas] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Video
   const [videoUrl, setVideoUrl] = useState(customizacao?.video_url ?? '')
@@ -97,33 +94,34 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
     if (res.ok) setTimeout(() => setInfoStatus('idle'), 2500)
   }
 
-  /* ── Image upload ──────────────────────────────────────── */
-  const openSlot = (idx: number) => {
-    if (uploadingIdx !== null) return
-    setPendingIdx(idx)
-    if (fileRef.current) { fileRef.current.value = ''; fileRef.current.click() }
-  }
+  /* ── Multiple upload (paralelo) ────────────────────────── */
+  const handleMultipleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const vagasDisponiveis = 5 - imagens.length
+    const arquivos = files.slice(0, vagasDisponiveis)
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || pendingIdx === null) return
-    setUploadingIdx(pendingIdx)
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('blingCodigo', produto.codigo)
-    const res = await fetch('/api/admin/produtos/imagem', { method: 'POST', body: fd })
-    const data = await res.json()
-    if (data.url) {
-      const novas = [...imagens]
-      novas[pendingIdx] = data.url
-      setImagens(novas)
+    if (files.length > vagasDisponiveis) {
+      alert(`Máximo 5 imagens. Apenas ${vagasDisponiveis} foram adicionadas.`)
     }
-    setUploadingIdx(null)
-    setPendingIdx(null)
-  }
+    if (arquivos.length === 0) return
 
-  const handleDeleteImg = (idx: number) => {
-    setImagens(imagens.filter((_, i) => i !== idx))
+    setUploadando(true)
+    try {
+      const urls = await Promise.all(
+        arquivos.map(async (file) => {
+          const form = new FormData()
+          form.append('file', file)
+          form.append('blingCodigo', produto.codigo)
+          const res = await fetch('/api/admin/produtos/imagem', { method: 'POST', body: form })
+          const data = await res.json()
+          return data.url as string
+        })
+      )
+      setImagens(prev => [...prev, ...urls.filter(Boolean)].slice(0, 5))
+    } finally {
+      setUploadando(false)
+      e.target.value = ''
+    }
   }
 
   /* ── Save video ────────────────────────────────────────── */
@@ -180,7 +178,8 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
         {/* ── Body expansível ─────────────────────────── */}
         {expanded && (
           <div className="pac-body">
-            {/* Seção 1: Informações */}
+
+            {/* Seção 1 — Informações */}
             <div className="pac-section">
               <div className="pac-section-ttl">Informações</div>
 
@@ -215,51 +214,122 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
               </div>
             </div>
 
-            {/* Seção 2: Imagens */}
+            {/* Seção 2 — Imagens */}
             <div className="pac-section">
               <div className="pac-section-ttl">Imagens</div>
-              <input ref={fileRef} type="file"
-                accept="image/jpeg,image/png,image/webp"
-                style={{ display: 'none' }}
-                onChange={handleFile} />
 
-              <div className="pac-img-grid">
-                {Array.from({ length: MAX_SLOTS }).map((_, idx) => {
-                  const url = imagens[idx]
-                  const loading = uploadingIdx === idx
-                  return (
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handleMultipleUpload}
+              />
+
+              {imagens.length < 5 && (
+                <button
+                  className="pac-upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadando}
+                >
+                  + Adicionar imagens
+                </button>
+              )}
+
+              {imagens.length > 0 && (
+                <div className="pac-dnd-grid">
+                  {imagens.map((url, i) => (
                     <div
-                      key={idx}
-                      className={`pac-slot${!url && !loading ? ' pac-slot-empty' : ''}`}
-                      onClick={() => !url && !loading ? openSlot(idx) : undefined}
-                      title={idx === 0 ? 'Imagem principal' : `Imagem ${idx + 1}`}
+                      key={url + i}
+                      draggable
+                      onDragStart={() => setDragIndex(i)}
+                      onDragOver={e => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragIndex === null || dragIndex === i) return
+                        const novo = [...imagens]
+                        const [moved] = novo.splice(dragIndex, 1)
+                        novo.splice(i, 0, moved)
+                        setImagens(novo)
+                        setDragIndex(null)
+                      }}
+                      onDragEnd={() => setDragIndex(null)}
+                      style={{
+                        position: 'relative',
+                        aspectRatio: '1',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        border: dragIndex === i
+                          ? '2px dashed var(--g500)'
+                          : '1px solid var(--border)',
+                        opacity: dragIndex === i ? 0.5 : 1,
+                        cursor: 'grab',
+                        background: 'var(--g50)',
+                      }}
                     >
-                      {loading ? (
-                        <div className="pac-spinner" />
-                      ) : url ? (
-                        <>
-                          <Image src={url} alt={`img ${idx + 1}`} width={120} height={120}
-                            style={{ objectFit: 'contain', width: '100%', height: '100%', borderRadius: 6 }} />
-                          <button className="pac-del"
-                            onClick={e => { e.stopPropagation(); handleDeleteImg(idx) }}
-                            aria-label="Remover">×</button>
-                          {idx === 0 && <span className="pac-main-tag">Principal</span>}
-                        </>
-                      ) : (
-                        <>
-                          <span className="pac-plus">+</span>
-                          <span className="pac-add-txt">Adicionar</span>
-                        </>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Imagem ${i + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+
+                      {i === 0 && (
+                        <div style={{
+                          position: 'absolute', top: 4, left: 4,
+                          background: 'var(--a500)', color: '#fff',
+                          fontSize: 9, fontWeight: 700,
+                          padding: '2px 6px', borderRadius: 20,
+                          letterSpacing: '.06em',
+                        }}>CAPA</div>
                       )}
+
+                      <button
+                        onClick={() => setImagens(imagens.filter((_, idx) => idx !== i))}
+                        style={{
+                          position: 'absolute', top: 4, right: 4,
+                          width: 20, height: 20, borderRadius: '50%',
+                          background: 'rgba(0,0,0,.6)', color: '#fff',
+                          border: 'none', cursor: 'pointer',
+                          fontSize: 14, lineHeight: '1',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >×</button>
+
+                      <div style={{
+                        position: 'absolute', bottom: 4, left: '50%',
+                        transform: 'translateX(-50%)',
+                        color: 'rgba(255,255,255,.7)', fontSize: 10,
+                        userSelect: 'none', pointerEvents: 'none',
+                      }}>⠿</div>
                     </div>
-                  )
-                })}
-              </div>
-              <p className="pac-hint">A primeira imagem é a principal exibida na loja</p>
+                  ))}
+
+                  {imagens.length < 5 && (
+                    <div className="pac-slot-add" onClick={() => fileInputRef.current?.click()}>
+                      <span style={{ fontSize: 20 }}>+</span>
+                      <span>{5 - imagens.length} vaga{5 - imagens.length > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {uploadando && (
+                <div style={{ marginTop: 8, textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
+                  ⏳ Fazendo upload das imagens...
+                </div>
+              )}
+
+              {imagens.length > 1 && !uploadando && (
+                <div style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center' }}>
+                  Arraste para reordenar · A primeira imagem é a capa
+                </div>
+              )}
+
               <div className="pac-save-row">
                 <button
                   className={`pac-btn pac-btn-full${imagensSalvas ? ' pac-btn-saved' : ''}`}
-                  disabled={salvandoImagens}
+                  disabled={salvandoImagens || uploadando}
                   onClick={async () => {
                     setSalvandoImagens(true)
                     try {
@@ -283,7 +353,7 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
               </div>
             </div>
 
-            {/* Seção 3: Vídeo */}
+            {/* Seção 3 — Vídeo */}
             <div className="pac-section">
               <div className="pac-section-ttl">Vídeo</div>
               <div className="pac-field">
@@ -307,6 +377,7 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
                 {videoStatus === 'erro' && <span className="pac-err">Erro ao salvar</span>}
               </div>
             </div>
+
           </div>
         )}
       </div>
@@ -412,53 +483,31 @@ const styles = `
   .pac-btn-saved { background: #16a34a; }
   .pac-btn-saved:hover:not(:disabled) { background: #15803d; }
 
-  /* Image grid */
-  .pac-img-grid {
-    display: flex; flex-wrap: wrap; gap: 10px;
+  .pac-upload-btn {
+    width: 100%; padding: 10px 18px;
+    background: transparent; color: var(--g700);
+    border: 2px dashed var(--border); border-radius: 8px;
+    font-family: var(--ff-body); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: border-color .15s, background .15s;
   }
-  .pac-slot {
-    width: 110px; height: 110px; border-radius: 8px;
-    position: relative; overflow: hidden;
-    border: 1.5px solid var(--border); background: #fff;
-    flex-shrink: 0;
-  }
-  .pac-slot-empty {
-    background: var(--g50); cursor: pointer;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 4px;
-    border-style: dashed;
-    transition: border-color .15s, background .15s;
-  }
-  .pac-slot-empty:hover { border-color: var(--g500); background: #fff; }
-  .pac-plus { font-size: 24px; color: var(--muted); line-height: 1; }
-  .pac-add-txt { font-size: 10px; font-weight: 600; color: var(--muted); }
-  .pac-del {
-    position: absolute; top: 4px; right: 4px;
-    width: 20px; height: 20px; border-radius: 50%;
-    background: rgba(0,0,0,.55); color: #fff;
-    border: none; font-size: 14px; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-family: var(--ff-body);
-    opacity: 0; transition: opacity .15s;
-  }
-  .pac-slot:hover .pac-del { opacity: 1; }
-  .pac-main-tag {
-    position: absolute; bottom: 4px; left: 4px;
-    font-size: 9px; font-weight: 800; text-transform: uppercase;
-    background: var(--g700); color: #fff;
-    padding: 2px 5px; border-radius: 3px;
-  }
-  .pac-spinner {
-    width: 32px; height: 32px; border-radius: 50%;
-    border: 3px solid var(--border);
-    border-top-color: var(--g700);
-    animation: pac-spin .7s linear infinite;
-    margin: auto; position: absolute;
-    top: 50%; left: 50%; transform: translate(-50%,-50%);
-  }
-  @keyframes pac-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
-  .pac-hint { font-size: 11px; color: var(--muted); }
+  .pac-upload-btn:hover:not(:disabled) { border-color: var(--g500); background: var(--g50); }
+  .pac-upload-btn:disabled { opacity: .55; cursor: not-allowed; }
 
-  /* Video */
+  .pac-dnd-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .pac-slot-add {
+    aspect-ratio: 1; border-radius: 8px;
+    border: 2px dashed var(--border);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer; color: var(--muted);
+    font-size: 11px; gap: 4px;
+    transition: border-color .2s, background .2s;
+  }
+  .pac-slot-add:hover { border-color: var(--g500); background: var(--g50); }
+
   .pac-video { border-radius: 8px; overflow: hidden; background: #000; }
 `
