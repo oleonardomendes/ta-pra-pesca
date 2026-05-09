@@ -1,0 +1,41 @@
+import { supabase } from '@/lib/supabase'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(req: Request) {
+  const formData = await req.formData()
+  const file = formData.get('file') as File
+  const blingCodigo = formData.get('blingCodigo') as string
+
+  if (!file || !blingCodigo) {
+    return Response.json({ error: 'Dados incompletos' }, { status: 400 })
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    return Response.json({ error: 'Arquivo muito grande (máx 5 MB)' }, { status: 400 })
+  }
+
+  const bytes = await file.arrayBuffer()
+  const buffer = Buffer.from(bytes)
+  const ext = file.name.split('.').pop()
+  const filename = `${blingCodigo}-${Date.now()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('produto-imagens')
+    .upload(filename, buffer, { contentType: file.type, upsert: true })
+
+  if (uploadError) {
+    return Response.json({ error: uploadError.message }, { status: 500 })
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('produto-imagens')
+    .getPublicUrl(filename)
+
+  await supabase.from('produto_imagens').upsert(
+    { bling_codigo: blingCodigo, imagem_url: publicUrl, updated_at: new Date().toISOString() },
+    { onConflict: 'bling_codigo' }
+  )
+
+  return Response.json({ url: publicUrl })
+}

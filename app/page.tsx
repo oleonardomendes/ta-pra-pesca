@@ -4,6 +4,7 @@ import StoreFooter from "@/components/StoreFooter";
 import StoreHeader from "@/components/StoreHeader";
 import Link from "next/link";
 import { blingFetch } from "@/lib/bling";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,16 @@ export default async function Home({ searchParams = {} }: HomeProps) {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = await blingFetch("/produtos?limite=100&pagina=1");
+    const [data, { data: imagensCustom }] = await Promise.all([
+      blingFetch("/produtos?limite=100&pagina=1"),
+      supabase.from("produto_imagens").select("bling_codigo, imagem_url"),
+    ]);
+
+    const imagemMap = new Map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (imagensCustom ?? []).map((i: any) => [i.bling_codigo, i.imagem_url])
+    );
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     produtos = data?.data?.map((p: any) => ({
       id: p.id,
@@ -36,7 +46,7 @@ export default async function Home({ searchParams = {} }: HomeProps) {
       codigo: p.codigo,
       preco: p.preco,
       precoCusto: p.precoCusto,
-      imagemURL: p.imagemURL || p.imagemThumbnail || "",
+      imagemURL: imagemMap.get(p.codigo) || p.imagemURL || p.imagemThumbnail || "",
       estoque: p.estoqueAtual ?? p.estoque ?? 0,
       descricao: p.descricaoComplementar || "",
       categoria: p.categoria?.descricao || "",
