@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import type { BlingProduto } from "@/components/FiltroCategorias";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface HomeProps {
   searchParams?: { busca?: string; categoria?: string };

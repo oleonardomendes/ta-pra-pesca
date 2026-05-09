@@ -71,7 +71,10 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ bling_codigo: produto.codigo, destaque: novo }),
     })
-    if (res.ok) setDestaque(novo)
+    if (res.ok) {
+      setDestaque(novo)
+      fetch('/api/admin/revalidate', { method: 'POST' })
+    }
     setToggleLoading(false)
   }
 
@@ -91,7 +94,10 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
     })
     setInfoStatus(res.ok ? 'ok' : 'erro')
     setSavingInfo(false)
-    if (res.ok) setTimeout(() => setInfoStatus('idle'), 2500)
+    if (res.ok) {
+      fetch('/api/admin/revalidate', { method: 'POST' })
+      setTimeout(() => setInfoStatus('idle'), 2500)
+    }
   }
 
   /* ── Multiple upload (paralelo) ────────────────────────── */
@@ -135,7 +141,10 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
     })
     setVideoStatus(res.ok ? 'ok' : 'erro')
     setSavingVideo(false)
-    if (res.ok) setTimeout(() => setVideoStatus('idle'), 2500)
+    if (res.ok) {
+      fetch('/api/admin/revalidate', { method: 'POST' })
+      setTimeout(() => setVideoStatus('idle'), 2500)
+    }
   }
 
   return (
@@ -341,6 +350,7 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
                           imagens: imagens.filter(Boolean),
                         }),
                       })
+                      fetch('/api/admin/revalidate', { method: 'POST' })
                       setImagensSalvas(true)
                       setTimeout(() => setImagensSalvas(false), 3000)
                     } finally {
