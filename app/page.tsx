@@ -5,20 +5,9 @@ import StoreHeader from "@/components/StoreHeader";
 import Link from "next/link";
 import { blingFetch } from "@/lib/bling";
 import { supabase } from "@/lib/supabase";
+import type { BlingProduto } from "@/components/FiltroCategorias";
 
 export const dynamic = "force-dynamic";
-
-interface BlingProduto {
-  id: number;
-  nome: string;
-  preco: number;
-  precoCusto: number;
-  imagemURL: string;
-  estoque: number;
-  codigo: string;
-  descricao: string;
-  categoria: string;
-}
 
 interface HomeProps {
   searchParams?: { busca?: string; categoria?: string };
@@ -29,34 +18,45 @@ export default async function Home({ searchParams = {} }: HomeProps) {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [data, { data: imagensCustom }] = await Promise.all([
+    const [data, { data: customizacoes }] = await Promise.all([
       blingFetch("/produtos?limite=100&pagina=1"),
-      supabase.from("produto_imagens").select("bling_codigo, imagem_url"),
+      supabase.from("produto_customizacoes").select("*"),
     ]);
 
-    const imagemMap = new Map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const customMap: Record<string, any> = Object.fromEntries(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (imagensCustom ?? []).map((i: any) => [i.bling_codigo, i.imagem_url])
+      (customizacoes || []).map((c: any) => [c.bling_codigo, c])
     );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    produtos = data?.data?.map((p: any) => ({
-      id: p.id,
-      nome: p.nome,
-      codigo: p.codigo,
-      preco: p.preco,
-      precoCusto: p.precoCusto,
-      imagemURL: imagemMap.get(p.codigo) || p.imagemURL || p.imagemThumbnail || "",
-      estoque: p.estoqueAtual ?? p.estoque ?? 0,
-      descricao: p.descricaoComplementar || "",
-      categoria: p.categoria?.descricao || "",
-    })) || [];
+    produtos = (data?.data ?? []).map((p: any) => {
+      const custom = customMap[p.codigo] || null;
+      const blingImg = p.imagemURL || p.imagemThumbnail || "";
+      const imagens: string[] = custom?.imagens?.length
+        ? custom.imagens
+        : [blingImg].filter(Boolean);
+
+      return {
+        id: p.id,
+        nome: custom?.nome_custom || p.nome,
+        codigo: p.codigo,
+        preco: custom?.preco_custom || p.preco,
+        precoCusto: p.precoCusto,
+        imagemURL: imagens[0] || blingImg,
+        imagens,
+        estoque: p.estoqueAtual ?? p.estoque ?? 0,
+        descricao: custom?.descricao_custom || p.descricaoComplementar || "",
+        categoria: p.categoria?.descricao || "",
+        video_url: custom?.video_url || null,
+        destaque: custom?.destaque || false,
+      };
+    });
   } catch (e) {
     console.error("Erro ao buscar produtos:", e);
     produtos = [];
   }
 
-  // Filtro server-side por busca
   const busca = searchParams.busca?.trim() || "";
   if (busca) {
     const q = busca.toLowerCase();

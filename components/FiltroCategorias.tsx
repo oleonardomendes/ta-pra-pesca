@@ -10,10 +10,13 @@ export interface BlingProduto {
   preco: number;
   precoCusto: number;
   imagemURL: string;
+  imagens: string[];
   estoque: number;
   codigo: string;
   descricao: string;
   categoria: string;
+  video_url?: string | null;
+  destaque?: boolean;
 }
 
 interface Props {
@@ -56,6 +59,8 @@ function ImageWithFallback({ src, alt }: { src: string; alt: string }) {
 export default function FiltroCategorias({ produtos, initialCategoria = "" }: Props) {
   const [selected, setSelected] = useState(initialCategoria || "Todos");
 
+  const destaques = produtos.filter((p) => p.destaque);
+
   const categoriasDisponiveis = [
     "Todos",
     ...KEYWORDS.filter((kw) =>
@@ -73,6 +78,42 @@ export default function FiltroCategorias({ produtos, initialCategoria = "" }: Pr
   return (
     <>
       <style>{filtroStyles}</style>
+
+      {destaques.length > 0 && (
+        <section className="dest-section">
+          <p className="dest-eyebrow">DESTAQUES</p>
+          <h2 className="dest-titulo">PRODUTOS SELECIONADOS</h2>
+          <div className="dest-scroll">
+            {destaques.map((produto) => {
+              const imgSrc = produto.imagens?.[0] || produto.imagemURL;
+              return (
+                <article key={produto.id} className="dest-card">
+                  <div className="dest-img-wrapper">
+                    <ImageWithFallback src={imgSrc} alt={produto.nome} />
+                    <span className="badge-destaque">⭐ Destaque</span>
+                    {produto.estoque <= 5 && (
+                      <span className="badge-estoque">Estoque baixo</span>
+                    )}
+                  </div>
+                  <div className="dest-body">
+                    <p className="dest-nome">{produto.nome}</p>
+                    {produto.descricao && (
+                      <p className="dest-desc">{produto.descricao}</p>
+                    )}
+                    <p className="dest-preco">{fmt(produto.preco)}</p>
+                    <ProdutoCard
+                      id={produto.id}
+                      nome={produto.nome}
+                      preco={produto.preco}
+                      imagemURL={imgSrc}
+                    />
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="filtro-section">
         <div className="filtro-pills">
@@ -98,25 +139,29 @@ export default function FiltroCategorias({ produtos, initialCategoria = "" }: Pr
         ) : (
           <div className="produtos-grid">
             {filtered.map((produto) => {
+              const imgSrc = produto.imagens?.[0] || produto.imagemURL;
               return (
                 <article key={produto.id} className="produto-card">
                   <div className="card-img-wrapper">
-                    <ImageWithFallback
-                      src={produto.imagemURL}
-                      alt={produto.nome}
-                    />
+                    <ImageWithFallback src={imgSrc} alt={produto.nome} />
+                    {produto.destaque && (
+                      <span className="badge-destaque-mini">⭐</span>
+                    )}
                     {produto.estoque <= 5 && (
                       <span className="badge-estoque">Estoque baixo</span>
                     )}
                   </div>
                   <div className="card-body">
                     <p className="card-nome">{produto.nome}</p>
+                    {produto.descricao && (
+                      <p className="card-desc">{produto.descricao}</p>
+                    )}
                     <p className="card-preco">{fmt(produto.preco)}</p>
                     <ProdutoCard
                       id={produto.id}
                       nome={produto.nome}
                       preco={produto.preco}
-                      imagemURL={produto.imagemURL}
+                      imagemURL={imgSrc}
                     />
                   </div>
                 </article>
@@ -130,6 +175,88 @@ export default function FiltroCategorias({ produtos, initialCategoria = "" }: Pr
 }
 
 const filtroStyles = `
+  /* ---- Destaques ---- */
+  .dest-section {
+    background: var(--cream);
+    padding: 56px 6% 48px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dest-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--g500); margin-bottom: 10px;
+  }
+  .dest-titulo {
+    font-family: var(--ff-display);
+    font-size: clamp(28px, 4vw, 42px);
+    color: var(--g900); letter-spacing: .03em;
+    margin-bottom: 28px;
+  }
+  .dest-scroll {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+  .dest-scroll::-webkit-scrollbar { display: none; }
+  .dest-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    box-shadow: var(--sh-card);
+    min-width: 280px;
+    max-width: 320px;
+    flex-shrink: 0;
+    transition: transform .22s, box-shadow .22s;
+  }
+  .dest-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(10,61,43,.12);
+  }
+  .dest-img-wrapper {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+  }
+  .dest-img-wrapper .card-img { height: 260px !important; }
+  .dest-img-wrapper .card-img-fallback { height: 260px; }
+  .badge-destaque {
+    position: absolute;
+    top: 12px; left: 12px;
+    background: #f59e0b; color: #fff;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 50px;
+    z-index: 1;
+  }
+  .badge-destaque-mini {
+    position: absolute;
+    top: 10px; left: 10px;
+    font-size: 16px; line-height: 1;
+    z-index: 1;
+  }
+  .dest-body { padding: 20px; }
+  .dest-nome {
+    font-size: 15px; font-weight: 600; color: var(--dark);
+    margin-bottom: 6px;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+    line-height: 1.45;
+  }
+  .dest-desc {
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 8px;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+    line-height: 1.5;
+  }
+  .dest-preco {
+    font-family: var(--ff-display);
+    font-size: 26px; color: var(--g900);
+    letter-spacing: .02em; margin-bottom: 16px;
+  }
+  /* ---- Filtros ---- */
   .filtro-section {
     background: var(--cream);
     padding: 48px 6% 0;
@@ -160,6 +287,7 @@ const filtroStyles = `
     color: #fff;
     border-color: var(--g900);
   }
+  /* ---- Grid ---- */
   .grid-section {
     background: var(--cream);
     padding: 40px 6% 80px;
@@ -211,29 +339,29 @@ const filtroStyles = `
     top: 12px; right: 12px;
     background: var(--a500);
     color: #fff;
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 11px; font-weight: 700;
     padding: 4px 10px;
     border-radius: 50px;
   }
   .card-body { padding: 20px; }
   .card-nome {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--dark);
+    font-size: 15px; font-weight: 600; color: var(--dark);
     margin-bottom: 8px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
     line-height: 1.45;
+  }
+  .card-desc {
+    font-size: 12px; color: var(--muted);
+    margin-bottom: 8px;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+    line-height: 1.5;
   }
   .card-preco {
     font-family: var(--ff-display);
-    font-size: 26px;
-    color: var(--g900);
-    letter-spacing: .02em;
-    margin-bottom: 16px;
+    font-size: 26px; color: var(--g900);
+    letter-spacing: .02em; margin-bottom: 16px;
   }
   .pcd-actions { display: flex; flex-direction: column; gap: 8px; }
   .pcd-btn-add {
@@ -270,5 +398,7 @@ const filtroStyles = `
     .produtos-grid { grid-template-columns: 1fr; gap: 16px; }
     .filtro-section { padding: 32px 5% 0; }
     .grid-section { padding: 32px 5% 60px; }
+    .dest-section { padding: 40px 5% 32px; }
+    .dest-card { min-width: 240px; }
   }
 `;
