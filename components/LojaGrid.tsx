@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import ProdutoCard from '@/components/ProdutoCard'
 import FiltroCategorias from '@/components/FiltroCategorias'
+import ProdutoModal from '@/components/ProdutoModal'
 import { useCart } from '@/contexts/CartContext'
 
 export interface BlingProduto {
@@ -57,7 +58,17 @@ function ImageWithFallback({ src, alt, height = 260 }: { src: string; alt: strin
 
 export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
   const [categoriaAtiva, setCategoriaAtiva] = useState(initialCategoria || 'Todos')
+  const [produtoModal, setProdutoModal] = useState<BlingProduto | null>(null)
   const { addItem } = useCart()
+
+  useEffect(() => {
+    if (produtoModal) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [produtoModal])
 
   const destaques = produtos.filter(p => p.destaque)
 
@@ -142,12 +153,30 @@ export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
                   destaque={produto.destaque}
                   estoque={produto.estoque}
                   descricao={produto.descricao}
+                  onVerDetalhes={() => setProdutoModal(produto)}
                 />
               </article>
             ))}
           </div>
         )}
       </div>
+
+      {produtoModal && (
+        <ProdutoModal
+          produto={{
+            id: produtoModal.id,
+            nome: produtoModal.nome,
+            codigo: produtoModal.codigo,
+            preco: produtoModal.preco,
+            descricao: produtoModal.descricao || undefined,
+            imagens: produtoModal.imagens,
+            video_url: produtoModal.video_url ?? undefined,
+            estoque: produtoModal.estoque,
+            destaque: produtoModal.destaque ?? false,
+          }}
+          onClose={() => setProdutoModal(null)}
+        />
+      )}
     </>
   )
 }

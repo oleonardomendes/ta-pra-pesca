@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "mcp__claude_ai_Vercel__deploy_to_vercel",
-      "PowerShell(where.exe node 2>$null; where.exe npm 2>$null; $env:PATH)"
+      "PowerShell(where.exe node 2>$null; where.exe npm 2>$null; $env:PATH)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Lucas\\\\Desktop\\\\ta-pra-pesca\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }
