@@ -32,24 +32,28 @@ export default async function Home({ searchParams = {} }: HomeProps) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     produtos = (data?.data ?? []).map((p: any) => {
       const custom = customMap[p.codigo] || null;
-      const blingImg = p.imagemURL || p.imagemThumbnail || "";
+      const blingImg = String(p.imagemURL || p.imagemThumbnail || "");
       const imagens: string[] = custom?.imagens?.length
         ? custom.imagens
         : [blingImg].filter(Boolean);
 
       return {
         id: p.id,
-        nome: custom?.nome_custom || p.nome,
-        codigo: p.codigo,
-        preco: custom?.preco_custom || p.preco,
-        precoCusto: p.precoCusto,
+        nome: String(custom?.nome_custom || p.nome || ""),
+        codigo: String(p.codigo || ""),
+        preco: Number(custom?.preco_custom || p.preco || 0),
+        precoCusto: Number(p.precoCusto || 0),
         imagemURL: imagens[0] || blingImg,
         imagens,
-        estoque: p.estoqueAtual ?? p.estoque ?? 0,
-        descricao: custom?.descricao_custom || p.descricaoComplementar || "",
-        categoria: p.categoria?.descricao || "",
+        estoque: Number(
+          typeof p.estoqueAtual === 'object'
+            ? p.estoqueAtual?.saldoVirtualTotal ?? 0
+            : p.estoqueAtual ?? p.estoque ?? 0
+        ),
+        descricao: String(custom?.descricao_custom || p.descricaoComplementar || ""),
+        categoria: String(p.categoria?.descricao || ""),
         video_url: custom?.video_url || null,
-        destaque: custom?.destaque || false,
+        destaque: Boolean(custom?.destaque),
       };
     });
   } catch (e) {

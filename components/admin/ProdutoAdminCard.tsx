@@ -153,7 +153,7 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
             <p className="pac-nome">{nomeCustom || produto.nome}</p>
             <p className="pac-meta">
               Cód: <strong>{produto.codigo}</strong>
-              &ensp;·&ensp;Estoque: <strong>{produto.estoque}</strong>
+              &ensp;·&ensp;Estoque: <strong>{Number(produto.estoque)}</strong>
             </p>
           </div>
 
@@ -204,7 +204,7 @@ export default function ProdutoAdminCard({ produto, customizacao }: Props) {
                 <input className="pac-input" type="number" step="0.01" min="0"
                   value={precoCustom}
                   onChange={e => setPrecoCustom(e.target.value)}
-                  placeholder={produto.preco.toFixed(2)} />
+                  placeholder={Number(produto.preco).toFixed(2)} />
               </div>
 
               <div className="pac-save-row">

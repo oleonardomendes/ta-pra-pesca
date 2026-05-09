@@ -17,11 +17,15 @@ export default async function AdminProdutosPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const produtos = (blingData?.data ?? []).map((p: any) => ({
     id: p.id,
-    nome: p.nome,
-    codigo: p.codigo,
-    preco: p.preco,
-    imagemURL: p.imagemURL || p.imagemThumbnail || '',
-    estoque: p.estoqueAtual ?? p.estoque ?? 0,
+    nome: String(p.nome || ''),
+    codigo: String(p.codigo || ''),
+    preco: Number(p.preco || 0),
+    imagemURL: String(p.imagemURL || p.imagemThumbnail || ''),
+    estoque: Number(
+      typeof p.estoque === 'object'
+        ? p.estoque?.saldoVirtualTotal ?? 0
+        : p.estoque ?? 0
+    ),
   }))
 
   return (
