@@ -44,6 +44,7 @@ export function trackAddToCart(produto: { id: number; nome: string; preco: numbe
   })
   trackTikTokEvent('AddToCart', {
     content_id: String(produto.id),
+    content_type: 'product',
     content_name: produto.nome,
     value: produto.preco,
     currency: 'BRL',
@@ -64,6 +65,7 @@ export function trackViewItem(produto: { id: number; nome: string; preco: number
   })
   trackTikTokEvent('ViewContent', {
     content_id: String(produto.id),
+    content_type: 'product',
     content_name: produto.nome,
     value: produto.preco,
     currency: 'BRL',
@@ -74,7 +76,12 @@ export function trackViewItem(produto: { id: number; nome: string; preco: number
 export function trackBeginCheckout(total: number, items: any[]) {
   trackEvent('begin_checkout', { currency: 'BRL', value: total, items })
   trackMetaEvent('InitiateCheckout', { value: total, currency: 'BRL', num_items: items.length })
-  trackTikTokEvent('InitiateCheckout', { value: total, currency: 'BRL' })
+  trackTikTokEvent('InitiateCheckout', {
+    content_id: items.map((i: any) => String(i.item_id || i.id)).join(','),
+    content_type: 'product',
+    value: total,
+    currency: 'BRL',
+  })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
