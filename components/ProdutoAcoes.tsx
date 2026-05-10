@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCart } from '@/contexts/CartContext'
+import { trackAddToCart } from '@/lib/analytics'
 
 const WA = process.env.NEXT_PUBLIC_WA_NUMBER || '5511900000000'
 
@@ -25,7 +26,10 @@ export default function ProdutoAcoes({ id, nome, preco, imagemURL }: Props) {
       <div className="acao-btns">
         <button
           className="acao-btn-cart"
-          onClick={() => addItem({ id, nome, preco, imagemURL })}
+          onClick={() => {
+            trackAddToCart({ id, nome, preco })
+            addItem({ id, nome, preco, imagemURL })
+          }}
         >
           Adicionar ao carrinho
         </button>

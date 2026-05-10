@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
 
 export const metadata: Metadata = {
   title: "Pedido confirmado — Tá Pra Pesca",
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
 export default function Obrigado() {
   return (
     <div style={styles.page}>
+      <PurchaseTracker />
       <div style={styles.card}>
         <div style={styles.icon}>🎣</div>
         <h1 style={styles.title}>Pedido confirmado!</h1>

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import GTM from "@/components/GTM";
 import ScrollReveal from "@/components/ScrollReveal";
 import { CartProvider } from "@/contexts/CartContext";
+import { GTMScript, GTMNoScript } from "@/components/analytics/GTM";
+import { MetaPixel } from "@/components/analytics/MetaPixel";
+import { GoogleAds } from "@/components/analytics/GoogleAds";
 
 export const metadata: Metadata = {
   title: "Tá Pra Pesca — Kits Completos de Pesca em Água Doce",
@@ -24,12 +26,7 @@ export const metadata: Metadata = {
       "Chega de improvisar na beira da água. Kits completos de pesca a partir de R$169.",
     type: "website",
     locale: "pt_BR",
-    // LUCAS: adicionar a URL real quando tiver domínio
-    // url: "https://taprapesca.com.br",
-    // images: [{ url: "/og-image.jpg", width: 1200, height: 630 }],
   },
-  // LUCAS: descomentar quando tiver domínio próprio
-  // metadataBase: new URL("https://taprapesca.com.br"),
 };
 
 export default function RootLayout({
@@ -38,13 +35,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  const adsId = process.env.NEXT_PUBLIC_GA_ADS_ID;
 
   return (
     <html lang="pt-BR">
       <body>
-        {/* GTM só renderiza quando NEXT_PUBLIC_GTM_ID estiver preenchido (Fase 3) */}
+        {gtmId && <GTMNoScript gtmId={gtmId} />}
         <CartProvider>
-          {gtmId && <GTM gtmId={gtmId} />}
+          {gtmId && <GTMScript gtmId={gtmId} />}
+          {pixelId && <MetaPixel pixelId={pixelId} />}
+          {adsId && <GoogleAds adsId={adsId} />}
           {children}
           <ScrollReveal />
         </CartProvider>

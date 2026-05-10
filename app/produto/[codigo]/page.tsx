@@ -8,6 +8,7 @@ import ProdutoGaleria from '@/components/ProdutoGaleria'
 import ProdutoAcoes from '@/components/ProdutoAcoes'
 import CombinacoesSugeridas from '@/components/CombinacoesSugeridas'
 import ProdutosRelacionados from '@/components/ProdutosRelacionados'
+import { ViewItemTracker } from '@/components/analytics/ViewItemTracker'
 
 export const dynamic = 'force-dynamic'
 
@@ -256,6 +257,8 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
       <StoreHeader />
 
       <main className="pp-main">
+        <ViewItemTracker produto={{ id: produto.id, nome: produto.nome, preco: produto.preco }} />
+
         {/* Breadcrumb */}
         <nav className="pp-breadcrumb">
           <Link href="/">Loja</Link>

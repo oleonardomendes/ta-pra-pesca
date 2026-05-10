@@ -4,6 +4,7 @@ import { useCart } from '@/contexts/CartContext'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { trackBeginCheckout } from '@/lib/analytics'
 
 const MPCheckoutBrick = dynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
 import Link from 'next/link'
@@ -23,6 +24,11 @@ export default function CartCheckoutPage() {
       router.replace('/')
       return
     }
+
+    trackBeginCheckout(
+      totalPreco,
+      items.map(i => ({ item_id: String(i.id), item_name: i.nome, price: i.preco, quantity: i.quantidade }))
+    )
 
     fetch('/api/mp/create-preference', {
       method: 'POST',
