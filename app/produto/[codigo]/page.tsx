@@ -121,7 +121,12 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
     )
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    todosProdutos = (data?.data ?? []).map((p: any) => {
+    const produtosValidos = (data?.data ?? []).filter((p: any) =>
+      p.codigo && String(p.codigo).trim() !== ''
+    )
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    todosProdutos = produtosValidos.map((p: any) => {
       const custom = customMap[p.codigo] || null
       const blingImg = String(p.imagemURL || p.imagemThumbnail || '')
       const imagens: string[] = custom?.imagens?.filter(Boolean).length
@@ -131,7 +136,7 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
       return {
         id: p.id,
         nome: String(custom?.nome_custom || p.nome || ''),
-        codigo: String(p.codigo || ''),
+        codigo: String(p.codigo).trim(),
         preco: Number(custom?.preco_custom || p.preco || 0),
         descricao: String(custom?.descricao_custom || p.descricaoComplementar || ''),
         imagens,
@@ -150,7 +155,9 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
     console.error('[produto] erro ao buscar dados:', e)
   }
 
-  const produto = todosProdutos.find(p => p.codigo === params.codigo)
+  const produto = todosProdutos.find(
+    p => String(p.codigo).trim() === String(params.codigo).trim()
+  )
   if (!produto) notFound()
 
   const produtosRelacionados = todosProdutos

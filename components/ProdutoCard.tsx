@@ -37,67 +37,79 @@ export default function ProdutoCard({
   const temMultiplas = imgs.length > 1
   const checkoutHref = `/checkout?id=${id}&nome=${encodeURIComponent(nome)}&preco=${preco}`
   const imgAtual = imgs[imgIndex] || ''
-  const produtoHref = `/produto/${codigo}`
+  const produtoHref = codigo ? `/produto/${codigo}` : null
+
+  const imgAreaInner = (
+    <>
+      {imgAtual ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imgAtual}
+          alt={nome}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity .25s ease' }}
+        />
+      ) : (
+        <div className="pcd-img-fallback">🎣</div>
+      )}
+
+      {temMultiplas && (
+        <>
+          <button
+            className="pcd-arrow pcd-arrow-l"
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i => (i - 1 + imgs.length) % imgs.length) }}
+          >‹</button>
+          <button
+            className="pcd-arrow pcd-arrow-r"
+            onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i => (i + 1) % imgs.length) }}
+          >›</button>
+        </>
+      )}
+
+      {temMultiplas && (
+        <div className="pcd-dots">
+          {imgs.map((_, i) => (
+            <div
+              key={i}
+              onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i) }}
+              style={{
+                width: i === imgIndex ? 16 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: i === imgIndex ? '#fff' : 'rgba(255,255,255,.5)',
+                cursor: 'pointer',
+                transition: 'all .2s',
+                flexShrink: 0,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {destaque && <div className="pcd-badge-dest">⭐ Destaque</div>}
+      {estoque !== undefined && estoque <= 5 && (
+        <div className="pcd-badge-estoque">Estoque baixo</div>
+      )}
+    </>
+  )
 
   return (
     <>
       <style>{styles}</style>
 
       {/* Área da imagem com carrossel */}
-      <Link href={produtoHref} className="pcd-img-area">
-        {imgAtual ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imgAtual}
-            alt={nome}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity .25s ease' }}
-          />
-        ) : (
-          <div className="pcd-img-fallback">🎣</div>
-        )}
-
-        {temMultiplas && (
-          <>
-            <button
-              className="pcd-arrow pcd-arrow-l"
-              onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i => (i - 1 + imgs.length) % imgs.length) }}
-            >‹</button>
-            <button
-              className="pcd-arrow pcd-arrow-r"
-              onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i => (i + 1) % imgs.length) }}
-            >›</button>
-          </>
-        )}
-
-        {temMultiplas && (
-          <div className="pcd-dots">
-            {imgs.map((_, i) => (
-              <div
-                key={i}
-                onClick={e => { e.preventDefault(); e.stopPropagation(); setImgIndex(i) }}
-                style={{
-                  width: i === imgIndex ? 16 : 6,
-                  height: 6,
-                  borderRadius: 3,
-                  background: i === imgIndex ? '#fff' : 'rgba(255,255,255,.5)',
-                  cursor: 'pointer',
-                  transition: 'all .2s',
-                  flexShrink: 0,
-                }}
-              />
-            ))}
-          </div>
-        )}
-
-        {destaque && <div className="pcd-badge-dest">⭐ Destaque</div>}
-        {estoque !== undefined && estoque <= 5 && (
-          <div className="pcd-badge-estoque">Estoque baixo</div>
-        )}
-      </Link>
+      {produtoHref ? (
+        <Link href={produtoHref} className="pcd-img-area">{imgAreaInner}</Link>
+      ) : (
+        <div className="pcd-img-area">{imgAreaInner}</div>
+      )}
 
       {/* Corpo do card */}
       <div className="pcd-body">
-        <Link href={produtoHref} className="pcd-nome">{nome}</Link>
+        {produtoHref ? (
+          <Link href={produtoHref} className="pcd-nome">{nome}</Link>
+        ) : (
+          <span className="pcd-nome">{nome}</span>
+        )}
         {descricao && <p className="pcd-desc">{descricao}</p>}
         <p className="pcd-preco">{fmt(preco)}</p>
 
