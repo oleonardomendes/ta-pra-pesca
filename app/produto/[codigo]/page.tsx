@@ -11,6 +11,17 @@ import ProdutosRelacionados from '@/components/ProdutosRelacionados'
 
 export const dynamic = 'force-dynamic'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lerEstoque(p: any): number {
+  const raw = p.estoqueAtual ?? p.estoque ?? p.saldoVirtual ?? null
+  if (raw === null || raw === undefined) return 0
+  if (typeof raw === 'number') return raw
+  if (typeof raw === 'object') {
+    return raw.saldoVirtualTotal ?? raw.saldoFisico ?? raw.saldoVirtual ?? raw.saldo ?? 0
+  }
+  return Number(raw) || 0
+}
+
 function detectarCategoria(nome: string): string {
   const n = nome.toLowerCase()
   if (n.includes('carretilha')) return 'Carretilha'
@@ -105,6 +116,8 @@ const fmt = (n: number) =>
 
 export default async function ProdutoPage({ params }: { params: { codigo: string } }) {
   let todosProdutos: ProdutoPage[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let rawBlingMap: Record<string, any> = {}
 
   try {
     const [data, { data: customizacoes }] = await Promise.all([
@@ -125,6 +138,10 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
       p.codigo && String(p.codigo).trim() !== ''
     )
 
+    // Guarda raw para log
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rawBlingMap = Object.fromEntries(produtosValidos.map((p: any) => [String(p.codigo).trim(), p]))
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     todosProdutos = produtosValidos.map((p: any) => {
       const custom = customMap[p.codigo] || null
@@ -142,11 +159,7 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
         imagens,
         imagemURL: imagens[0] || '',
         video_url: custom?.video_url || null,
-        estoque: Number(
-          typeof p.estoqueAtual === 'object'
-            ? p.estoqueAtual?.saldoVirtualTotal ?? 0
-            : p.estoqueAtual ?? 0
-        ),
+        estoque: lerEstoque(p),
         destaque: Boolean(custom?.destaque),
         categoria: detectarCategoria(String(p.nome || '')),
       }
@@ -159,6 +172,30 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
     p => String(p.codigo).trim() === String(params.codigo).trim()
   )
   if (!produto) notFound()
+
+  // Log para diagnóstico — remover após confirmar campo correto
+  const rawP = rawBlingMap[String(params.codigo).trim()]
+  if (rawP) {
+    console.log('[produto] ESTOQUE RAW:', JSON.stringify(rawP.estoqueAtual ?? rawP.estoque ?? 'undefined'))
+    console.log('[produto] PRODUTO RAW KEYS:', Object.keys(rawP).join(', '))
+  }
+
+  // Se estoque for 0, tenta buscar no endpoint dedicado de estoques
+  if (produto.estoque === 0) {
+    try {
+      const estoqueData = await blingFetch(`/estoques?codigo=${produto.codigo}`)
+      const saldo = estoqueData?.data?.[0]?.saldoVirtualTotal ?? null
+      console.log('[produto] ESTOQUE VIA /estoques:', saldo)
+      if (saldo !== null) {
+        produto.estoque = saldo
+      } else {
+        produto.estoque = 99 // Bling não retornou → assumir disponível
+      }
+    } catch (err) {
+      console.log('[produto] /estoques indisponível, fallback 99:', String(err))
+      produto.estoque = 99
+    }
+  }
 
   const produtosRelacionados = todosProdutos
     .filter(p => p.categoria === produto.categoria && p.id !== produto.id)
@@ -207,11 +244,11 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
     : produto.nome
 
   const estoqueInfo =
-    produto.estoque === 0
-      ? { text: '✗ Indisponível', color: '#ef4444' }
-      : produto.estoque <= 5
+    produto.estoque > 5
+      ? { text: '✓ Em estoque', color: '#22c55e' }
+      : produto.estoque >= 1
       ? { text: `⚠ Últimas ${produto.estoque} unidades`, color: '#f59e0b' }
-      : { text: '✓ Em estoque', color: '#22c55e' }
+      : { text: '✓ Em estoque', color: '#22c55e' } // fallback: não mostrar indisponível sem certeza
 
   return (
     <>

@@ -4,6 +4,17 @@ import ProdutoAdminCard from '@/components/admin/ProdutoAdminCard'
 
 export const dynamic = 'force-dynamic'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lerEstoque(p: any): number {
+  const raw = p.estoqueAtual ?? p.estoque ?? p.saldoVirtual ?? null
+  if (raw === null || raw === undefined) return 0
+  if (typeof raw === 'number') return raw
+  if (typeof raw === 'object') {
+    return raw.saldoVirtualTotal ?? raw.saldoFisico ?? raw.saldoVirtual ?? raw.saldo ?? 0
+  }
+  return Number(raw) || 0
+}
+
 export default async function AdminProdutosPage() {
   const [blingData, { data: customizacoes }] = await Promise.all([
     blingFetch('/produtos?limite=100&pagina=1').catch(() => null),
@@ -21,11 +32,7 @@ export default async function AdminProdutosPage() {
     codigo: String(p.codigo || ''),
     preco: Number(p.preco || 0),
     imagemURL: String(p.imagemURL || p.imagemThumbnail || ''),
-    estoque: Number(
-      typeof p.estoqueAtual === 'object'
-        ? p.estoqueAtual?.saldoVirtualTotal ?? 0
-        : p.estoqueAtual ?? p.estoque ?? 0
-    ),
+    estoque: lerEstoque(p),
   }))
 
   return (

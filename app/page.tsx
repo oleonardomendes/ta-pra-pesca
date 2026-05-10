@@ -10,6 +10,17 @@ import { supabase } from "@/lib/supabase";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function lerEstoque(p: any): number {
+  const raw = p.estoqueAtual ?? p.estoque ?? p.saldoVirtual ?? null;
+  if (raw === null || raw === undefined) return 0;
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "object") {
+    return raw.saldoVirtualTotal ?? raw.saldoFisico ?? raw.saldoVirtual ?? raw.saldo ?? 0;
+  }
+  return Number(raw) || 0;
+}
+
 function detectarCategoria(nome: string): string {
   const n = nome.toLowerCase();
   if (n.includes("carretilha")) return "Carretilha";
@@ -62,11 +73,7 @@ export default async function Home({ searchParams = {} }: HomeProps) {
         precoCusto: Number(p.precoCusto || 0),
         imagemURL: imagemPrincipal,
         imagens,
-        estoque: Number(
-          typeof p.estoqueAtual === "object"
-            ? p.estoqueAtual?.saldoVirtualTotal ?? 0
-            : p.estoqueAtual ?? p.estoque ?? 0
-        ),
+        estoque: lerEstoque(p),
         descricao: String(custom?.descricao_custom || p.descricaoComplementar || ""),
         categoria: detectarCategoria(String(p.nome || "")),
         video_url: custom?.video_url || null,
