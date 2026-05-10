@@ -22,9 +22,9 @@ export default async function AdminProdutosPage() {
     preco: Number(p.preco || 0),
     imagemURL: String(p.imagemURL || p.imagemThumbnail || ''),
     estoque: Number(
-      typeof p.estoque === 'object'
-        ? p.estoque?.saldoVirtualTotal ?? 0
-        : p.estoque ?? 0
+      typeof p.estoqueAtual === 'object'
+        ? p.estoqueAtual?.saldoVirtualTotal ?? 0
+        : p.estoqueAtual ?? p.estoque ?? 0
     ),
   }))
 
