@@ -1,63 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { initMercadoPago, Payment } from '@mercadopago/sdk-react'
-
 interface Props {
-  preferenceId: string
-  kitNome: string
+  checkoutUrl: string
   kitPreco: number
+  kitNome?: string
 }
 
-export default function MPCheckoutBrick({ preferenceId, kitPreco }: Props) {
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const publicKey = process.env.NEXT_PUBLIC_MP_ENV === 'test'
-      ? process.env.NEXT_PUBLIC_MP_PUBLIC_KEY_TEST!
-      : process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!
-
-    initMercadoPago(publicKey, { locale: 'pt-BR' })
-    setReady(true)
-  }, [])
-
-  if (!ready) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
-        Carregando checkout...
-      </div>
-    )
-  }
+export default function MPCheckoutBrick({ checkoutUrl, kitPreco }: Props) {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n)
 
   return (
-    <Payment
-      initialization={{
-        amount: kitPreco,
-        preferenceId,
-      }}
-      customization={{
-        paymentMethods: {
-          creditCard: 'all',
-          debitCard: 'all',
-          mercadoPago: 'all',
-        },
-        visual: {
-          style: {
-            theme: 'default',
-            customVariables: {
-              baseColor: '#0F5C45',
-              baseColorFirstVariant: '#1D9E75',
-              baseColorSecondVariant: '#0A3D2B',
-              errorColor: '#A32D2D',
-              successColor: '#1D9E75',
-            },
-          },
-        },
-      }}
-      onSubmit={async () => Promise.resolve()}
-      onError={(error) => console.error('MP Brick error:', error)}
-    />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <a
+        href={checkoutUrl}
+        style={{
+          display: 'block', width: '100%', padding: '14px',
+          background: '#009ee3', color: '#fff', borderRadius: '50px',
+          textAlign: 'center', fontWeight: '700', fontSize: '15px',
+          textDecoration: 'none', fontFamily: 'var(--ff-body)',
+          transition: 'background .2s, transform .15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#007ebb'; (e.currentTarget as HTMLAnchorElement).style.transform = 'translateY(-1px)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#009ee3'; (e.currentTarget as HTMLAnchorElement).style.transform = 'none' }}
+      >
+        Pagar {fmt(kitPreco)} com cartão via Mercado Pago
+      </a>
+      <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--muted)', margin: 0 }}>
+        Você será redirecionado para o Mercado Pago
+      </p>
+    </div>
   )
 }

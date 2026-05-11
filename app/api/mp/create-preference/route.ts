@@ -41,9 +41,9 @@ export async function POST(req: Request) {
           frete_servico: freteServico || null,
         },
         back_urls: backUrls ?? {
-          success: 'https://taprapesca.com.br/kits/obrigado',
-          failure: 'https://taprapesca.com.br/kits',
-          pending: 'https://taprapesca.com.br/kits/obrigado',
+          success: 'https://taprapesca.com.br/obrigado?status=approved',
+          failure: 'https://taprapesca.com.br/checkout?erro=pagamento',
+          pending: 'https://taprapesca.com.br/obrigado?status=pending',
         },
         payment_methods: {
           installments: 12,
@@ -54,7 +54,11 @@ export async function POST(req: Request) {
       }
     })
 
-    return NextResponse.json({ preferenceId: result.id })
+    const checkoutUrl = process.env.NEXT_PUBLIC_MP_ENV === 'test'
+      ? result.sandbox_init_point
+      : result.init_point
+
+    return NextResponse.json({ preferenceId: result.id, checkoutUrl })
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message },

@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import dynamic from 'next/dynamic'
 import PixButton from '@/components/PixButton'
-
-const MPCheckoutBrick = dynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
+import MPCheckoutBrick from '@/components/MPCheckoutBrick'
 
 interface FreteOpcao {
   id: number
@@ -19,6 +17,7 @@ interface Props {
   kitNome: string
   kitPreco: number
   preferenceId: string
+  checkoutUrl: string
   onFreteSelected: (frete: { servico: string; valor: number; prazo: number }) => void
   onEnderecoComplete: (dados: { endereco: any; cpf: string; frete: any }) => void
   produtosParaFrete: Array<{
@@ -48,7 +47,7 @@ function mascaraCPF(v: string) {
 }
 
 export default function CheckoutForm({
-  kitNome, kitPreco, preferenceId, onFreteSelected, onEnderecoComplete, produtosParaFrete,
+  kitNome, kitPreco, checkoutUrl, onFreteSelected, onEnderecoComplete, produtosParaFrete,
 }: Props) {
   const [step, setStep] = useState(1)
 
@@ -342,8 +341,7 @@ export default function CheckoutForm({
           </div>
 
           <MPCheckoutBrick
-            preferenceId={preferenceId}
-            kitNome={kitNome}
+            checkoutUrl={checkoutUrl}
             kitPreco={totalComFrete}
           />
         </div>
