@@ -1,24 +1,64 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
+  let res = NextResponse.next()
 
-  if (!pathname.startsWith('/admin')) return NextResponse.next()
-  if (pathname === '/admin/login') return NextResponse.next()
-
-  const session = req.cookies.get('admin_session')?.value
-  if (!session) {
-    return NextResponse.redirect(new URL('/admin/login', req.url))
+  // Proteção do admin (lógica existente — mantém igual)
+  if (pathname.startsWith('/admin')) {
+    if (pathname === '/admin/login') return res
+    const session = req.cookies.get('admin_session')?.value
+    if (!session) {
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
+    const [token, sig] = session.split('.')
+    if (!token || !sig) {
+      return NextResponse.redirect(new URL('/admin/login', req.url))
+    }
+    return res
   }
 
-  const [token, sig] = session.split('.')
-  if (!token || !sig) {
-    return NextResponse.redirect(new URL('/admin/login', req.url))
+  // Autenticação de clientes via Supabase
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return req.cookies.getAll() },
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Protege rotas de checkout — exige login
+  if (
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/kits/checkout')
+  ) {
+    if (!user) {
+      const redirectUrl = new URL('/login', req.url)
+      redirectUrl.searchParams.set('redirect', pathname + req.nextUrl.search)
+      return NextResponse.redirect(redirectUrl)
+    }
   }
 
-  return NextResponse.next()
+  // Protege área da conta
+  if (pathname.startsWith('/conta')) {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+  }
+
+  return res
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/checkout/:path*', '/kits/checkout/:path*', '/conta/:path*'],
 }
