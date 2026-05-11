@@ -114,9 +114,8 @@ export default function CartCheckoutPage() {
             {/* Brick */}
             <div className="cc-brick-wrap">
               <div className="cc-label">Forma de pagamento</div>
-              {preferenceId && checkoutUrl && (
+              {checkoutUrl && (
                 <MPCheckout
-                  preferenceId={preferenceId}
                   checkoutUrl={checkoutUrl}
                   kitNome="Pedido Tá Pra Pesca"
                   kitPreco={totalPreco}
