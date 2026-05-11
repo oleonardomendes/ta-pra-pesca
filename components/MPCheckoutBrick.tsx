@@ -24,6 +24,15 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
     setReady(true)
   }, [])
 
+  if (loadingPix) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px',
+        color: 'var(--muted)', fontSize: '14px' }}>
+        ⏳ Gerando QR Code PIX...
+      </div>
+    )
+  }
+
   if (pixData) {
     return (
       <PixQRCode
@@ -31,14 +40,6 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
         qrCodeBase64={pixData.qrCodeBase64}
         valor={kitPreco}
       />
-    )
-  }
-
-  if (loadingPix) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
-        Gerando QR Code PIX...
-      </div>
     )
   }
 
@@ -76,12 +77,12 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
         }}
         customization={{
           paymentMethods: {
-            ticket: 'all',
+            ticket: 'none',
             creditCard: 'all',
             debitCard: 'all',
             mercadoPago: 'all',
             bankTransfer: 'all',
-            atm: 'all',
+            atm: 'none',
           },
           visual: {
             style: {
@@ -97,30 +98,54 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
           },
         }}
         onSubmit={async ({ selectedPaymentMethod, formData }) => {
-          if (
+          console.log('payment method:', selectedPaymentMethod)
+          console.log('formData:', JSON.stringify(formData))
+
+          const isPix =
             selectedPaymentMethod === 'bank_transfer' ||
-            (formData as any)?.payment_method_id === 'pix'
-          ) {
+            selectedPaymentMethod === 'pix' ||
+            (formData as any)?.payment_method_id === 'pix' ||
+            (formData as any)?.paymentMethodId === 'pix' ||
+            JSON.stringify(formData).toLowerCase().includes('pix')
+
+          if (isPix) {
             setLoadingPix(true)
             try {
+              const email =
+                (formData as any)?.payer?.email ||
+                (formData as any)?.email ||
+                'cliente@taprapesca.com.br'
+
               const res = await fetch('/api/mp/create-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  formData,
+                  formData: { ...formData, payer: { email } },
                   amount: Math.round(kitPreco * 0.95 * 100) / 100,
                   description: kitNome,
                 }),
               })
               const data = await res.json()
+              console.log('PIX response:', data)
+
               if (data.qrCode) {
-                setPixData({ qrCode: data.qrCode, qrCodeBase64: data.qrCodeBase64 })
+                setPixData({
+                  qrCode: data.qrCode,
+                  qrCodeBase64: data.qrCodeBase64,
+                })
+              } else {
+                alert('Erro ao gerar PIX. Tente novamente.')
               }
+            } catch (e) {
+              console.error('Erro PIX:', e)
+              alert('Erro ao gerar PIX. Tente novamente.')
             } finally {
               setLoadingPix(false)
             }
             return Promise.resolve()
           }
+
+          // Outros métodos — fluxo normal
           return Promise.resolve()
         }}
         onError={(error) => console.error('MP Brick error:', error)}
