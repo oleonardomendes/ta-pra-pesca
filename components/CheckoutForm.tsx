@@ -1,0 +1,481 @@
+'use client'
+
+import { useState } from 'react'
+import dynamic from 'next/dynamic'
+import PixButton from '@/components/PixButton'
+
+const MPCheckoutBrick = dynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
+
+interface FreteOpcao {
+  id: number
+  nome: string
+  empresa: string
+  preco: number
+  prazo: number
+  logo: string
+}
+
+interface Props {
+  kitNome: string
+  kitPreco: number
+  preferenceId: string
+  onFreteSelected: (frete: { servico: string; valor: number; prazo: number }) => void
+  onEnderecoComplete: (dados: { endereco: any; cpf: string; frete: any }) => void
+  produtosParaFrete: Array<{
+    id: string
+    nome: string
+    peso: number
+    altura: number
+    largura: number
+    comprimento: number
+    valor: number
+    quantidade: number
+  }>
+}
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n)
+
+function mascaraCEP(v: string) {
+  return v.replace(/\D/g, '').slice(0, 8).replace(/(\d{5})(\d)/, '$1-$2')
+}
+
+function mascaraCPF(v: string) {
+  return v.replace(/\D/g, '').slice(0, 11)
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+}
+
+export default function CheckoutForm({
+  kitNome, kitPreco, preferenceId, onFreteSelected, onEnderecoComplete, produtosParaFrete,
+}: Props) {
+  const [step, setStep] = useState(1)
+
+  // Endereço
+  const [cep, setCep] = useState('')
+  const [logradouro, setLogradouro] = useState('')
+  const [numero, setNumero] = useState('')
+  const [complemento, setComplemento] = useState('')
+  const [bairro, setBairro] = useState('')
+  const [cidade, setCidade] = useState('')
+  const [estado, setEstado] = useState('')
+  const [cpf, setCpf] = useState('')
+  const [buscandoCep, setBuscandoCep] = useState(false)
+
+  // Frete
+  const [opcoesFrete, setOpcoesFrete] = useState<FreteOpcao[]>([])
+  const [freteSelected, setFreteSelected] = useState<FreteOpcao | null>(null)
+  const [calculandoFrete, setCalculandoFrete] = useState(false)
+
+  const [erros, setErros] = useState<Record<string, string>>({})
+
+  async function handleCepChange(valor: string) {
+    const masked = mascaraCEP(valor)
+    setCep(masked)
+    const digits = masked.replace(/\D/g, '')
+    if (digits.length === 8) {
+      setBuscandoCep(true)
+      try {
+        const res = await fetch(`/api/cep/lookup?cep=${digits}`)
+        const data = await res.json()
+        if (!data.error) {
+          setLogradouro(data.logradouro || '')
+          setBairro(data.bairro || '')
+          setCidade(data.cidade || '')
+          setEstado(data.estado || '')
+        }
+      } catch {}
+      setBuscandoCep(false)
+    }
+  }
+
+  function validarStep1() {
+    const e: Record<string, string> = {}
+    if (cep.replace(/\D/g, '').length !== 8) e.cep = 'CEP inválido'
+    if (!logradouro.trim()) e.logradouro = 'Obrigatório'
+    if (!numero.trim()) e.numero = 'Obrigatório'
+    if (!bairro.trim()) e.bairro = 'Obrigatório'
+    if (cpf.replace(/\D/g, '').length !== 11) e.cpf = 'CPF inválido'
+    setErros(e)
+    return Object.keys(e).length === 0
+  }
+
+  async function handleCalcularFrete() {
+    if (!validarStep1()) return
+    setCalculandoFrete(true)
+    try {
+      const res = await fetch('/api/shipping/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cepDestino: cep.replace(/\D/g, ''),
+          produtos: produtosParaFrete,
+        }),
+      })
+      const data = await res.json()
+      if (data.opcoes?.length) {
+        setOpcoesFrete(data.opcoes)
+        setStep(2)
+      } else {
+        setErros({ frete: 'Não foi possível calcular o frete. Tente novamente.' })
+      }
+    } catch {
+      setErros({ frete: 'Erro ao calcular frete.' })
+    }
+    setCalculandoFrete(false)
+  }
+
+  function handleIrPagamento() {
+    if (!freteSelected) return
+    onFreteSelected({ servico: freteSelected.nome, valor: freteSelected.preco, prazo: freteSelected.prazo })
+    onEnderecoComplete({
+      endereco: { cep, logradouro, numero, complemento, bairro, cidade, estado },
+      cpf,
+      frete: freteSelected,
+    })
+    setStep(3)
+  }
+
+  const totalComFrete = kitPreco + (freteSelected?.preco || 0)
+
+  return (
+    <>
+      <style>{styles}</style>
+
+      {/* Barra de progresso */}
+      <div className="cf-progress">
+        {['Endereço', 'Frete', 'Pagamento'].map((label, i) => {
+          const n = i + 1
+          const ativo = step === n
+          const completo = step > n
+          return (
+            <div key={label} className="cf-progress-item">
+              <div className={`cf-progress-dot${ativo ? ' cf-dot-ativo' : completo ? ' cf-dot-completo' : ''}`}>
+                {completo ? '✓' : n}
+              </div>
+              <span className={`cf-progress-label${ativo ? ' cf-label-ativo' : ''}`}>{label}</span>
+              {i < 2 && <div className={`cf-progress-line${completo ? ' cf-line-completo' : ''}`} />}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* STEP 1 — Endereço e CPF */}
+      {step === 1 && (
+        <div className="cf-section">
+          <div className="cf-field">
+            <label className="cf-label">CEP</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className={`cf-input${erros.cep ? ' cf-input-erro' : ''}`}
+                placeholder="00000-000"
+                value={cep}
+                onChange={e => handleCepChange(e.target.value)}
+                inputMode="numeric"
+              />
+              {buscandoCep && <span className="cf-cep-spinner">⏳</span>}
+            </div>
+            {erros.cep && <span className="cf-erro-msg">{erros.cep}</span>}
+          </div>
+
+          <div className="cf-field">
+            <label className="cf-label">Logradouro</label>
+            <input
+              className={`cf-input${erros.logradouro ? ' cf-input-erro' : ''}`}
+              placeholder="Rua, Av., etc."
+              value={logradouro}
+              onChange={e => setLogradouro(e.target.value)}
+            />
+            {erros.logradouro && <span className="cf-erro-msg">{erros.logradouro}</span>}
+          </div>
+
+          <div className="cf-row">
+            <div className="cf-field">
+              <label className="cf-label">Número</label>
+              <input
+                className={`cf-input${erros.numero ? ' cf-input-erro' : ''}`}
+                placeholder="123"
+                value={numero}
+                onChange={e => setNumero(e.target.value)}
+              />
+              {erros.numero && <span className="cf-erro-msg">{erros.numero}</span>}
+            </div>
+            <div className="cf-field">
+              <label className="cf-label">Complemento</label>
+              <input
+                className="cf-input"
+                placeholder="Apto, bloco... (opcional)"
+                value={complemento}
+                onChange={e => setComplemento(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="cf-field">
+            <label className="cf-label">Bairro</label>
+            <input
+              className={`cf-input${erros.bairro ? ' cf-input-erro' : ''}`}
+              placeholder="Bairro"
+              value={bairro}
+              onChange={e => setBairro(e.target.value)}
+            />
+            {erros.bairro && <span className="cf-erro-msg">{erros.bairro}</span>}
+          </div>
+
+          <div className="cf-row">
+            <div className="cf-field">
+              <label className="cf-label">Cidade</label>
+              <input className="cf-input cf-input-readonly" value={cidade} readOnly />
+            </div>
+            <div className="cf-field" style={{ maxWidth: '100px' }}>
+              <label className="cf-label">UF</label>
+              <input className="cf-input cf-input-readonly" value={estado} readOnly />
+            </div>
+          </div>
+
+          <div className="cf-field">
+            <label className="cf-label">CPF</label>
+            <input
+              className={`cf-input${erros.cpf ? ' cf-input-erro' : ''}`}
+              placeholder="000.000.000-00"
+              value={cpf}
+              onChange={e => setCpf(mascaraCPF(e.target.value))}
+              inputMode="numeric"
+            />
+            {erros.cpf && <span className="cf-erro-msg">{erros.cpf}</span>}
+          </div>
+
+          {erros.frete && <div className="cf-alert">{erros.frete}</div>}
+
+          <button
+            className="cf-btn-primary"
+            onClick={handleCalcularFrete}
+            disabled={calculandoFrete}
+          >
+            {calculandoFrete ? '⏳ Calculando frete...' : 'Calcular frete →'}
+          </button>
+        </div>
+      )}
+
+      {/* STEP 2 — Frete */}
+      {step === 2 && (
+        <div className="cf-section">
+          <button className="cf-btn-back" onClick={() => setStep(1)}>← Editar endereço</button>
+
+          <div className="cf-frete-lista">
+            {opcoesFrete.map(op => (
+              <div
+                key={op.id}
+                className={`cf-frete-card${freteSelected?.id === op.id ? ' cf-frete-selected' : ''}`}
+                onClick={() => setFreteSelected(op)}
+              >
+                <div className="cf-frete-left">
+                  {op.logo
+                    ? <img src={op.logo} alt={op.empresa} className="cf-frete-logo" />
+                    : <div className="cf-frete-logo-fallback">📦</div>
+                  }
+                  <div>
+                    <div className="cf-frete-nome">{op.nome}</div>
+                    <div className="cf-frete-prazo">{op.prazo} dias úteis</div>
+                  </div>
+                </div>
+                <div className="cf-frete-preco">{fmt(op.preco)}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="cf-subtotal">
+            <div className="cf-subtotal-linha">
+              <span>Produto</span>
+              <span>{fmt(kitPreco)}</span>
+            </div>
+            <div className="cf-subtotal-linha">
+              <span>Frete</span>
+              <span>{freteSelected ? fmt(freteSelected.preco) : '—'}</span>
+            </div>
+            <div className="cf-subtotal-total">
+              <span>Total</span>
+              <span>{freteSelected ? fmt(totalComFrete) : '—'}</span>
+            </div>
+          </div>
+
+          <button
+            className="cf-btn-primary"
+            onClick={handleIrPagamento}
+            disabled={!freteSelected}
+          >
+            Ir para pagamento →
+          </button>
+        </div>
+      )}
+
+      {/* STEP 3 — Pagamento */}
+      {step === 3 && freteSelected && (
+        <div className="cf-section">
+          <button className="cf-btn-back" onClick={() => setStep(2)}>← Alterar frete</button>
+
+          {/* Resumo */}
+          <div className="cf-resumo">
+            <div className="cf-resumo-titulo">Resumo do pedido</div>
+            <div className="cf-resumo-linha"><span>Produto</span><span>{kitNome}</span></div>
+            <div className="cf-resumo-linha">
+              <span>Endereço</span>
+              <span>{logradouro}, {numero}{complemento ? `, ${complemento}` : ''} — {bairro}, {cidade}/{estado}</span>
+            </div>
+            <div className="cf-resumo-linha">
+              <span>Frete</span>
+              <span>{freteSelected.nome} ({freteSelected.prazo} dias) — {fmt(freteSelected.preco)}</span>
+            </div>
+            <div className="cf-resumo-total">
+              <span>Total</span>
+              <span>{fmt(totalComFrete)}</span>
+            </div>
+          </div>
+
+          <PixButton kitNome={kitNome} kitPreco={totalComFrete} />
+
+          <div className="cf-divisor">
+            <div className="cf-divisor-line" />
+            ou pague com cartão
+            <div className="cf-divisor-line" />
+          </div>
+
+          <MPCheckoutBrick
+            preferenceId={preferenceId}
+            kitNome={kitNome}
+            kitPreco={totalComFrete}
+          />
+        </div>
+      )}
+    </>
+  )
+}
+
+const styles = `
+  .cf-progress {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; margin-bottom: 28px;
+  }
+  .cf-progress-item {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .cf-progress-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; font-family: var(--ff-body);
+    background: var(--border); color: var(--muted);
+    flex-shrink: 0; transition: all .2s;
+  }
+  .cf-dot-ativo { background: var(--g700); color: #fff; }
+  .cf-dot-completo { background: var(--g500); color: #fff; }
+  .cf-progress-label {
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    white-space: nowrap;
+  }
+  .cf-label-ativo { color: var(--g700); }
+  .cf-progress-line {
+    width: 32px; height: 2px; background: var(--border); margin: 0 4px; flex-shrink: 0;
+  }
+  .cf-line-completo { background: var(--g500); }
+
+  .cf-section { display: flex; flex-direction: column; gap: 14px; }
+
+  .cf-field { display: flex; flex-direction: column; gap: 4px; }
+  .cf-label {
+    font-size: 12px; font-weight: 700; color: var(--dark);
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .cf-input {
+    border: 1.5px solid var(--border); border-radius: var(--r-md, 8px);
+    padding: 11px 13px; font-size: 14px; font-family: var(--ff-body);
+    color: var(--dark); background: #fff; outline: none;
+    transition: border-color .15s;
+  }
+  .cf-input:focus { border-color: var(--g700); }
+  .cf-input-erro { border-color: #A32D2D !important; }
+  .cf-input-readonly { background: var(--cream); color: var(--muted); cursor: default; }
+  .cf-erro-msg { font-size: 11px; color: #A32D2D; font-weight: 600; }
+  .cf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cf-cep-spinner {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; pointer-events: none;
+  }
+
+  .cf-alert {
+    background: #FCEBEB; color: #A32D2D;
+    border-radius: var(--r-sm, 6px); padding: 10px 14px;
+    font-size: 13px; font-weight: 600;
+  }
+
+  .cf-btn-primary {
+    width: 100%; padding: 13px; border-radius: 50px;
+    background: var(--g700); color: #fff;
+    border: none; font-size: 14px; font-weight: 700; font-family: var(--ff-body);
+    cursor: pointer; transition: background .2s, transform .15s;
+  }
+  .cf-btn-primary:hover:not(:disabled) { background: var(--g900); transform: translateY(-1px); }
+  .cf-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  .cf-btn-back {
+    background: none; border: none; color: var(--muted);
+    font-size: 13px; font-family: var(--ff-body); cursor: pointer;
+    padding: 0; text-align: left; font-weight: 600;
+  }
+  .cf-btn-back:hover { color: var(--g700); }
+
+  .cf-frete-lista { display: flex; flex-direction: column; gap: 10px; }
+  .cf-frete-card {
+    border: 1.5px solid var(--border); border-radius: var(--r-md, 10px);
+    padding: 14px 16px; display: flex; align-items: center;
+    justify-content: space-between; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .cf-frete-card:hover { border-color: var(--g500); background: var(--g50); }
+  .cf-frete-selected { border-color: var(--g700) !important; background: #f0f7f0 !important; }
+  .cf-frete-left { display: flex; align-items: center; gap: 12px; }
+  .cf-frete-logo { width: 36px; height: 36px; object-fit: contain; border-radius: 4px; }
+  .cf-frete-logo-fallback { font-size: 28px; }
+  .cf-frete-nome { font-size: 13px; font-weight: 700; color: var(--dark); }
+  .cf-frete-prazo { font-size: 12px; color: var(--muted); }
+  .cf-frete-preco { font-family: var(--ff-display); font-size: 18px; color: var(--g700); }
+
+  .cf-subtotal {
+    background: var(--cream); border-radius: var(--r-md, 10px);
+    padding: 16px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .cf-subtotal-linha {
+    display: flex; justify-content: space-between;
+    font-size: 13px; color: var(--muted);
+  }
+  .cf-subtotal-total {
+    display: flex; justify-content: space-between;
+    font-size: 16px; font-weight: 700; color: var(--g900);
+    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px;
+  }
+
+  .cf-resumo {
+    background: var(--cream); border-radius: var(--r-md, 10px);
+    padding: 16px; display: flex; flex-direction: column; gap: 8px;
+    margin-bottom: 4px;
+  }
+  .cf-resumo-titulo {
+    font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+  }
+  .cf-resumo-linha {
+    display: flex; justify-content: space-between; gap: 16px;
+    font-size: 13px; color: var(--muted);
+  }
+  .cf-resumo-linha span:last-child { text-align: right; color: var(--dark); font-weight: 500; }
+  .cf-resumo-total {
+    display: flex; justify-content: space-between;
+    font-family: var(--ff-display); font-size: 22px; color: var(--g700);
+    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px;
+  }
+
+  .cf-divisor {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--muted); font-size: 12px; margin: 4px 0;
+  }
+  .cf-divisor-line { flex: 1; height: 1px; background: var(--border); }
+`
