@@ -27,9 +27,9 @@ export default async function CheckoutPage({ searchParams }: Props) {
       kitNome: nome,
       kitPreco,
       backUrls: {
-        success: 'https://taprapesca.com.br/obrigado',
+        success: `https://taprapesca.com.br/obrigado?id=${id}&nome=${encodeURIComponent(String(nome))}&preco=${kitPreco}`,
         failure: 'https://taprapesca.com.br',
-        pending: 'https://taprapesca.com.br/obrigado',
+        pending: `https://taprapesca.com.br/obrigado?id=${id}&nome=${encodeURIComponent(String(nome))}&preco=${kitPreco}`,
       },
     }),
     cache: 'no-store',

@@ -33,6 +33,11 @@ export default async function CheckoutPage({ searchParams }: Props) {
       kitId: kit.id,
       kitNome: `${kit.name} ${kit.nameBreak}`,
       kitPreco: kit.price,
+      backUrls: {
+        success: `https://taprapesca.com.br/kits/obrigado?kit=${kit.id}`,
+        failure: 'https://taprapesca.com.br/kits',
+        pending: `https://taprapesca.com.br/kits/obrigado?kit=${kit.id}`,
+      },
     }),
     cache: 'no-store',
   })

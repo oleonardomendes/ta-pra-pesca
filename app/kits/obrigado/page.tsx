@@ -1,25 +1,39 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
+import PurchaseEvent from "@/components/PurchaseEvent";
+import { kits } from "@/data/kits";
 
 export const metadata: Metadata = {
   title: "Pedido confirmado — Tá Pra Pesca",
   description: "Seu kit foi pedido com sucesso!",
-  // Evita que a página de obrigado apareça no Google
   robots: { index: false, follow: false },
 };
 
-// =============================================================
-// PÁGINA DE OBRIGADO
-// Essa página é acessada após a confirmação de compra.
-// É aqui que GA4, Meta Pixel e Google Ads registram conversão.
-// O GTM dispara o evento "Purchase" quando detecta essa URL.
-// =============================================================
+interface Props {
+  searchParams: { payment_id?: string; kit?: string }
+}
 
-export default function Obrigado() {
+export default function Obrigado({ searchParams }: Props) {
+  const kit = kits.find(k => k.id === Number(searchParams?.kit))
+  const paymentId = searchParams?.payment_id
+
   return (
     <div style={styles.page}>
       <PurchaseTracker />
+      {kit && (
+        <PurchaseEvent
+          value={kit.price}
+          transactionId={paymentId}
+          items={[{
+            id: String(kit.id),
+            name: `${kit.name} ${kit.nameBreak}`,
+            price: kit.price,
+            quantity: 1,
+            category: 'Kit de Pesca',
+          }]}
+        />
+      )}
       <div style={styles.card}>
         <div style={styles.icon}>🎣</div>
         <h1 style={styles.title}>Pedido confirmado!</h1>

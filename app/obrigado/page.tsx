@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
+import PurchaseEvent from "@/components/PurchaseEvent";
 
 export const metadata: Metadata = {
   title: "Pedido confirmado — Tá Pra Pesca",
@@ -8,10 +9,32 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function Obrigado() {
+interface Props {
+  searchParams: { payment_id?: string; id?: string; nome?: string; preco?: string }
+}
+
+export default function Obrigado({ searchParams }: Props) {
+  const paymentId = searchParams?.payment_id
+  const id = searchParams?.id
+  const nome = searchParams?.nome ? decodeURIComponent(searchParams.nome) : ''
+  const preco = Number(searchParams?.preco || 0)
+
   return (
     <div style={styles.page}>
       <PurchaseTracker />
+      {id && nome && preco > 0 && (
+        <PurchaseEvent
+          value={preco}
+          transactionId={paymentId}
+          items={[{
+            id: String(id),
+            name: nome,
+            price: preco,
+            quantity: 1,
+            category: 'Pesca',
+          }]}
+        />
+      )}
       <div style={styles.card}>
         <div style={styles.icon}>🎣</div>
         <h1 style={styles.title}>Pedido confirmado!</h1>
