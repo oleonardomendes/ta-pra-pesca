@@ -95,7 +95,6 @@ export async function GET() {
       <g:link>${escapeXml(p.link)}</g:link>
       <g:image_link>${escapeXml(p.imagem)}</g:image_link>
       <g:price>${precoFormatado(p.preco)}</g:price>
-      <g:sale_price>${(p.preco * 0.95).toFixed(2)} BRL</g:sale_price>
       <g:availability>${p.disponivel}</g:availability>
       <g:condition>new</g:condition>
       <g:brand>${escapeXml(p.marca)}</g:brand>
