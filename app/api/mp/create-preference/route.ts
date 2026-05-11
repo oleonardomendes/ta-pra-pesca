@@ -29,10 +29,15 @@ export async function POST(req: Request) {
           currency_id: 'BRL',
         }]
 
+    const userId = req.headers.get('x-user-id') || null
+
     const preference = new Preference(client)
     const result = await preference.create({
       body: {
         items: mpItems,
+        metadata: {
+          user_id: userId,
+        },
         back_urls: backUrls ?? {
           success: 'https://taprapesca.com.br/kits/obrigado',
           failure: 'https://taprapesca.com.br/kits',

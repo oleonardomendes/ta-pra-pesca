@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { trackBeginCheckout } from '@/lib/analytics'
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 
 const MPCheckoutBrick = dynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
 import Link from 'next/link'
@@ -25,14 +26,21 @@ export default function CartCheckoutPage() {
       return
     }
 
+    void (async () => {
     trackBeginCheckout(
       totalPreco,
       items.map(i => ({ item_id: String(i.id), item_name: i.nome, price: i.preco, quantity: i.quantidade }))
     )
 
+    const supabase = createSupabaseBrowserClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
     fetch('/api/mp/create-preference', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': user?.id || '',
+      },
       body: JSON.stringify({
         items: items.map(i => ({
           id: i.id,
@@ -54,6 +62,7 @@ export default function CartCheckoutPage() {
       })
       .catch(e => setError(String(e.message)))
       .finally(() => setLoading(false))
+    })()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

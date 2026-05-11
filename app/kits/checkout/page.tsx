@@ -2,6 +2,7 @@ import { kits } from '@/data/kits'
 import { notFound } from 'next/navigation'
 import nextDynamic from 'next/dynamic'
 import Link from 'next/link'
+import { createSupabaseServerClient } from '@/lib/supabase-client'
 
 const MPCheckoutBrick = nextDynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
 
@@ -17,10 +18,16 @@ export default async function CheckoutPage({ searchParams }: Props) {
   if (!kit) notFound()
 
   // Criar preferência server-side
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://taprapesca.com.br'
   const res = await fetch(`${baseUrl}/api/mp/create-preference`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': user?.id || '',
+    },
     body: JSON.stringify({
       kitId: kit.id,
       kitNome: `${kit.name} ${kit.nameBreak}`,
