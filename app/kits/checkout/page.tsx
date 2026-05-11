@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createSupabaseServerClient } from '@/lib/supabase-client'
 
 const MPCheckoutBrick = nextDynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
+const PixButton = nextDynamic(() => import('@/components/PixButton'), { ssr: false })
 
 export const dynamic = 'force-dynamic'
 
@@ -148,6 +149,15 @@ export default async function CheckoutPage({ searchParams }: Props) {
 
             <div className="checkout-brick-wrap">
               <div className="checkout-brick-label">Forma de pagamento</div>
+              <PixButton kitNome={`${kit.name} ${kit.nameBreak}`} kitPreco={kit.price} />
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                margin: '20px 0', color: 'var(--muted)', fontSize: '12px',
+              }}>
+                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                ou pague com cartão
+                <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+              </div>
               <MPCheckoutBrick
                 preferenceId={preferenceId}
                 kitNome={`${kit.name} ${kit.nameBreak}`}
