@@ -13,6 +13,8 @@ export default function MPCheckoutBrick({ preferenceId, kitPreco }: Props) {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
     const publicKey = process.env.NEXT_PUBLIC_MP_ENV === 'test'
       ? process.env.NEXT_PUBLIC_MP_PUBLIC_KEY_TEST!
       : process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!
