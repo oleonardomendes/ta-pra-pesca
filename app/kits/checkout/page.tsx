@@ -1,10 +1,22 @@
 import { kits } from '@/data/kits'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import nextDynamic from 'next/dynamic'
+import { Suspense } from 'react'
 import { createSupabaseServerClient } from '@/lib/supabase-client'
-import CheckoutPageClient from '@/components/CheckoutPageClient'
 
 export const dynamic = 'force-dynamic'
+
+const CheckoutPageClient = nextDynamic(
+  () => import('@/components/CheckoutPageClient'),
+  { ssr: false }
+)
+
+const fallback = (
+  <div style={{ padding: '60px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
+    Carregando...
+  </div>
+)
 
 interface Props {
   searchParams: { kit?: string }
@@ -51,9 +63,8 @@ export default async function CheckoutPage({ searchParams }: Props) {
     )
   }
 
-  // Dimensões da embalagem do kit: maior comprimento + soma dos pesos (estimativa)
   const kitDimensoes = {
-    peso: Math.min(kit.price * 0.002 + 0.5, 5),   // estimativa por preço
+    peso: Math.min(kit.price * 0.002 + 0.5, 5),
     altura: 20,
     largura: 20,
     comprimento: 40,
@@ -69,18 +80,20 @@ export default async function CheckoutPage({ searchParams }: Props) {
       </Link>
 
       <div style={{ maxWidth: '640px', margin: '0 auto', background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px' }}>
-        <CheckoutPageClient
-          kitNome={`${kit.name} ${kit.nameBreak}`}
-          kitPreco={kit.price}
-          preferenceId={preferenceId}
-          produtosParaFrete={[{
-            id: String(kit.id),
-            nome: `${kit.name} ${kit.nameBreak}`,
-            valor: kit.price,
-            quantidade: 1,
-            ...kitDimensoes,
-          }]}
-        />
+        <Suspense fallback={fallback}>
+          <CheckoutPageClient
+            kitNome={`${kit.name} ${kit.nameBreak}`}
+            kitPreco={kit.price}
+            preferenceId={preferenceId}
+            produtosParaFrete={[{
+              id: String(kit.id),
+              nome: `${kit.name} ${kit.nameBreak}`,
+              valor: kit.price,
+              quantidade: 1,
+              ...kitDimensoes,
+            }]}
+          />
+        </Suspense>
       </div>
     </div>
   )

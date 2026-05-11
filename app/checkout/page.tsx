@@ -1,9 +1,21 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import CheckoutPageClient from '@/components/CheckoutPageClient'
+import nextDynamic from 'next/dynamic'
+import { Suspense } from 'react'
 import { dimensoesProdutos, dimensoesPadrao } from '@/data/dimensoes'
 
 export const dynamic = 'force-dynamic'
+
+const CheckoutPageClient = nextDynamic(
+  () => import('@/components/CheckoutPageClient'),
+  { ssr: false }
+)
+
+const fallback = (
+  <div style={{ padding: '60px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
+    Carregando...
+  </div>
+)
 
 interface Props {
   searchParams: { nome?: string; preco?: string; id?: string; codigo?: string }
@@ -57,18 +69,20 @@ export default async function CheckoutPage({ searchParams }: Props) {
       </Link>
 
       <div style={{ maxWidth: '640px', margin: '0 auto', background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px' }}>
-        <CheckoutPageClient
-          kitNome={String(nome)}
-          kitPreco={kitPreco}
-          preferenceId={preferenceId}
-          produtosParaFrete={[{
-            id: String(id),
-            nome: String(nome),
-            valor: kitPreco,
-            quantidade: 1,
-            ...dimensoes,
-          }]}
-        />
+        <Suspense fallback={fallback}>
+          <CheckoutPageClient
+            kitNome={String(nome)}
+            kitPreco={kitPreco}
+            preferenceId={preferenceId}
+            produtosParaFrete={[{
+              id: String(id),
+              nome: String(nome),
+              valor: kitPreco,
+              quantidade: 1,
+              ...dimensoes,
+            }]}
+          />
+        </Suspense>
       </div>
     </div>
   )
