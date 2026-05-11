@@ -3,11 +3,9 @@
 import { useCart } from '@/contexts/CartContext'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import { trackBeginCheckout } from '@/lib/analytics'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
-
-const MPCheckoutBrick = dynamic(() => import('@/components/MPCheckoutBrick'), { ssr: false })
+import MPCheckout from '@/components/MPCheckoutBrick'
 import Link from 'next/link'
 
 const fmt = (n: number) =>
@@ -17,6 +15,7 @@ export default function CartCheckoutPage() {
   const { items, totalPreco } = useCart()
   const router = useRouter()
   const [preferenceId, setPreferenceId] = useState<string | null>(null)
+  const [checkoutUrl, setCheckoutUrl] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -58,7 +57,10 @@ export default function CartCheckoutPage() {
       .then(r => r.json())
       .then(data => {
         if (data.error) setError(data.error)
-        else setPreferenceId(data.preferenceId)
+        else {
+          setPreferenceId(data.preferenceId)
+          setCheckoutUrl(data.checkoutUrl)
+        }
       })
       .catch(e => setError(String(e.message)))
       .finally(() => setLoading(false))
@@ -112,9 +114,10 @@ export default function CartCheckoutPage() {
             {/* Brick */}
             <div className="cc-brick-wrap">
               <div className="cc-label">Forma de pagamento</div>
-              {preferenceId && (
-                <MPCheckoutBrick
+              {preferenceId && checkoutUrl && (
+                <MPCheckout
                   preferenceId={preferenceId}
+                  checkoutUrl={checkoutUrl}
                   kitNome="Pedido Tá Pra Pesca"
                   kitPreco={totalPreco}
                 />
