@@ -14,7 +14,6 @@ const fmt = (n: number) =>
 export default function CartCheckoutPage() {
   const { items, totalPreco } = useCart()
   const router = useRouter()
-  const [preferenceId, setPreferenceId] = useState<string | null>(null)
   const [checkoutUrl, setCheckoutUrl] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -57,10 +56,7 @@ export default function CartCheckoutPage() {
       .then(r => r.json())
       .then(data => {
         if (data.error) setError(data.error)
-        else {
-          setPreferenceId(data.preferenceId)
-          setCheckoutUrl(data.checkoutUrl)
-        }
+        else setCheckoutUrl(data.checkoutUrl)
       })
       .catch(e => setError(String(e.message)))
       .finally(() => setLoading(false))

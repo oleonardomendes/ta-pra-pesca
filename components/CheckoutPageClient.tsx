@@ -28,16 +28,16 @@ interface ProdutoFrete {
 interface Props {
   kitNome: string
   kitPreco: number
-  preferenceId: string
+  checkoutUrl: string
   produtosParaFrete: ProdutoFrete[]
 }
 
-export default function CheckoutPageClient({ kitNome, kitPreco, preferenceId, produtosParaFrete }: Props) {
+export default function CheckoutPageClient({ kitNome, kitPreco, checkoutUrl, produtosParaFrete }: Props) {
   return (
     <CheckoutForm
       kitNome={kitNome}
       kitPreco={kitPreco}
-      preferenceId={preferenceId}
+      checkoutUrl={checkoutUrl}
       produtosParaFrete={produtosParaFrete}
       onFreteSelected={(frete) => {
         sessionStorage.setItem('checkout_frete', JSON.stringify(frete))

@@ -16,7 +16,6 @@ interface FreteOpcao {
 interface Props {
   kitNome: string
   kitPreco: number
-  preferenceId: string
   checkoutUrl: string
   onFreteSelected: (frete: { servico: string; valor: number; prazo: number }) => void
   onEnderecoComplete: (dados: { endereco: any; cpf: string; frete: any }) => void

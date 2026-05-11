@@ -12,7 +12,6 @@ const CheckoutForm = nextDynamic(
 
 function CheckoutContent() {
   const searchParams = useSearchParams()
-  const [preferenceId, setPreferenceId] = useState<string | null>(null)
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
@@ -43,9 +42,8 @@ function CheckoutContent() {
     })
       .then(r => r.json())
       .then(data => {
-        if (data.preferenceId) {
-          setPreferenceId(data.preferenceId)
-          setCheckoutUrl(data.checkoutUrl || '')
+        if (data.checkoutUrl) {
+          setCheckoutUrl(data.checkoutUrl)
         } else {
           setErro('Erro ao iniciar checkout')
         }
@@ -87,13 +85,12 @@ function CheckoutContent() {
         display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '32px' }}>
         ← Voltar para os kits
       </a>
-      {preferenceId && checkoutUrl && (
+      {checkoutUrl && (
         <div style={{ maxWidth: '640px', margin: '0 auto', background: '#fff',
           border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px' }}>
           <CheckoutForm
             kitNome={`${kit.name} ${kit.nameBreak}`}
             kitPreco={kit.price}
-            preferenceId={preferenceId}
             checkoutUrl={checkoutUrl}
             produtosParaFrete={[{
               id: String(kit.id),
