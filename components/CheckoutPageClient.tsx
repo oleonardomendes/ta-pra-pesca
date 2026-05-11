@@ -1,6 +1,18 @@
 'use client'
 
-import CheckoutForm from '@/components/CheckoutForm'
+import nextDynamic from 'next/dynamic'
+
+const CheckoutForm = nextDynamic(
+  () => import('@/components/CheckoutForm'),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)' }}>
+        Carregando checkout...
+      </div>
+    ),
+  }
+)
 
 interface ProdutoFrete {
   id: string
@@ -28,14 +40,10 @@ export default function CheckoutPageClient({ kitNome, kitPreco, preferenceId, pr
       preferenceId={preferenceId}
       produtosParaFrete={produtosParaFrete}
       onFreteSelected={(frete) => {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('checkout_frete', JSON.stringify(frete))
-        }
+        sessionStorage.setItem('checkout_frete', JSON.stringify(frete))
       }}
       onEnderecoComplete={(dados) => {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('checkout_dados', JSON.stringify(dados))
-        }
+        sessionStorage.setItem('checkout_dados', JSON.stringify(dados))
       }}
     />
   )
