@@ -2,7 +2,7 @@
 
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 
 function traduzirErro(msg: string): string {
@@ -12,9 +12,10 @@ function traduzirErro(msg: string): string {
   return msg
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') || '/conta'
   const [aba, setAba] = useState<'login' | 'cadastro'>('login')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -33,7 +34,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
     setLoading(false)
     if (error) { setErro(traduzirErro(error.message)); return }
-    router.push(searchParams.get('redirect') || '/conta')
+    router.push(redirect)
   }
 
   async function handleEsqueciSenha() {
@@ -179,6 +180,26 @@ export default function LoginPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh',
+        background: 'var(--cream)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{ color: 'var(--muted)', fontSize: '14px' }}>
+          Carregando...
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
 
