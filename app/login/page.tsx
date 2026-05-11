@@ -15,7 +15,6 @@ function traduzirErro(msg: string): string {
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/conta'
   const [aba, setAba] = useState<'login' | 'cadastro'>('login')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -34,7 +33,13 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
     setLoading(false)
     if (error) { setErro(traduzirErro(error.message)); return }
-    router.push(redirect)
+    const redirectTo = searchParams.get('redirect')
+    if (redirectTo) {
+      router.push(decodeURIComponent(redirectTo))
+    } else {
+      router.push('/conta')
+    }
+    router.refresh()
   }
 
   async function handleEsqueciSenha() {

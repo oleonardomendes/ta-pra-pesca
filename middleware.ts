@@ -44,7 +44,10 @@ export async function middleware(req: NextRequest) {
   ) {
     if (!user) {
       const redirectUrl = new URL('/login', req.url)
-      redirectUrl.searchParams.set('redirect', pathname + req.nextUrl.search)
+      redirectUrl.searchParams.set(
+        'redirect',
+        encodeURIComponent(pathname + req.nextUrl.search)
+      )
       return NextResponse.redirect(redirectUrl)
     }
   }
