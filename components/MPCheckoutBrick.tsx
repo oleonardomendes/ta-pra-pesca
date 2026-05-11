@@ -99,9 +99,10 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
           console.log('payment method:', selectedPaymentMethod)
           console.log('formData:', JSON.stringify(formData))
 
+          const method = selectedPaymentMethod as string
           const isPix =
-            selectedPaymentMethod === 'bank_transfer' ||
-            selectedPaymentMethod === 'pix' ||
+            method === 'bank_transfer' ||
+            method === 'pix' ||
             (formData as any)?.payment_method_id === 'pix' ||
             (formData as any)?.paymentMethodId === 'pix' ||
             JSON.stringify(formData).toLowerCase().includes('pix')
