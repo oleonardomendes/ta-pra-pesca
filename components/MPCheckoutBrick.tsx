@@ -77,12 +77,10 @@ export default function MPCheckoutBrick({ preferenceId, kitNome, kitPreco }: Pro
         }}
         customization={{
           paymentMethods: {
-            ticket: 'none',
             creditCard: 'all',
             debitCard: 'all',
             mercadoPago: 'all',
             bankTransfer: 'all',
-            atm: 'none',
           },
           visual: {
             style: {

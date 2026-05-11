@@ -44,7 +44,10 @@ export async function POST(req: Request) {
           pending: 'https://taprapesca.com.br/kits/obrigado',
         },
         payment_methods: {
-          excluded_payment_types: [],
+          excluded_payment_types: [
+            { id: 'ticket' },
+            { id: 'atm' },
+          ],
           installments: 12,
           default_installments: 1,
         },
