@@ -20,11 +20,11 @@ function precoFormatado(preco: number): string {
   return `${Number(preco).toFixed(2)} BRL`
 }
 
-function detectarCategoria(nome: string): string {
+function googleCategory(nome: string): string {
   const n = nome.toLowerCase()
+  if (n.includes('vara')) return 'Sporting Goods > Outdoor Recreation > Fishing > Fishing Rods'
   if (n.includes('carretilha')) return 'Sporting Goods > Outdoor Recreation > Fishing > Fishing Reels'
   if (n.includes('molinete')) return 'Sporting Goods > Outdoor Recreation > Fishing > Fishing Reels'
-  if (n.includes('vara')) return 'Sporting Goods > Outdoor Recreation > Fishing > Fishing Rods'
   if (n.includes('linha') || n.includes('nylon')) return 'Sporting Goods > Outdoor Recreation > Fishing > Fishing Lines & Leaders'
   return 'Sporting Goods > Outdoor Recreation > Fishing'
 }
@@ -77,7 +77,7 @@ export async function GET() {
         preco,
         disponivel: estoque > 0 ? 'in stock' : 'out of stock',
         marca: MARCA,
-        categoria: detectarCategoria(nome),
+        categoria: googleCategory(nome),
       }
     }).filter((p: any) => p.imagem && p.preco > 0)
 
