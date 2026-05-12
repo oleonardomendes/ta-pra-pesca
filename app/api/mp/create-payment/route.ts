@@ -37,6 +37,16 @@ export async function POST(req: Request) {
       ticketUrl: result.point_of_interaction?.transaction_data?.ticket_url,
     })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[create-payment] erro:', {
+      message: e.message,
+      status: e.status,
+      cause: e.cause,
+      env: process.env.NEXT_PUBLIC_MP_ENV,
+      temToken: !!process.env.MP_ACCESS_TOKEN_TEST,
+    })
+    return Response.json({
+      error: e.message,
+      detail: e.cause || null,
+    }, { status: 500 })
   }
 }
