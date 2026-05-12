@@ -20,9 +20,9 @@ export async function GET(req: NextRequest) {
       code,
     }
 
-    const tokenUrl = process.env.MELHOR_ENVIO_BASE_URL
-      ?.replace('/api/v2', '/oauth/token')
-      || 'https://melhorenvio.com.br/oauth/token'
+    const tokenUrl = process.env.MELHOR_ENVIO_BASE_URL?.includes('sandbox')
+      ? 'https://sandbox.melhorenvio.com.br/oauth/token'
+      : 'https://www.melhorenvio.com.br/oauth/token'
 
     const res = await fetch(tokenUrl, {
       method: 'POST',
