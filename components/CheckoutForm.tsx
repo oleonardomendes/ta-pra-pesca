@@ -16,7 +16,7 @@ interface FreteOpcao {
 interface Props {
   kitNome: string
   kitPreco: number
-  checkoutUrl: string
+  backUrls?: { success: string; failure: string; pending: string }
   onFreteSelected: (frete: { servico: string; valor: number; prazo: number }) => void
   onEnderecoComplete: (dados: { endereco: any; cpf: string; frete: any }) => void
   produtosParaFrete: Array<{
@@ -46,9 +46,11 @@ function mascaraCPF(v: string) {
 }
 
 export default function CheckoutForm({
-  kitNome, kitPreco, checkoutUrl, onFreteSelected, onEnderecoComplete, produtosParaFrete,
+  kitNome, kitPreco, backUrls, onFreteSelected, onEnderecoComplete, produtosParaFrete,
 }: Props) {
   const [step, setStep] = useState(1)
+  const [checkoutUrl, setCheckoutUrl] = useState('')
+  const [loadingPayment, setLoadingPayment] = useState(false)
 
   // Endereço
   const [cep, setCep] = useState('')
@@ -124,14 +126,32 @@ export default function CheckoutForm({
     setCalculandoFrete(false)
   }
 
-  function handleIrPagamento() {
+  async function handleIrPagamento() {
     if (!freteSelected) return
+    setLoadingPayment(true)
+    try {
+      const res = await fetch('/api/mp/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kitId: produtosParaFrete[0]?.id || '',
+          kitNome,
+          kitPreco,
+          freteValor: freteSelected.preco,
+          freteServico: freteSelected.nome,
+          ...(backUrls ? { backUrls } : {}),
+        }),
+      })
+      const data = await res.json()
+      setCheckoutUrl(data.checkoutUrl || '')
+    } catch {}
     onFreteSelected({ servico: freteSelected.nome, valor: freteSelected.preco, prazo: freteSelected.prazo })
     onEnderecoComplete({
       endereco: { cep, logradouro, numero, complemento, bairro, cidade, estado },
       cpf,
       frete: freteSelected,
     })
+    setLoadingPayment(false)
     setStep(3)
   }
 
@@ -301,9 +321,9 @@ export default function CheckoutForm({
           <button
             className="cf-btn-primary"
             onClick={handleIrPagamento}
-            disabled={!freteSelected}
+            disabled={!freteSelected || loadingPayment}
           >
-            Ir para pagamento →
+            {loadingPayment ? '⏳ Preparando pagamento...' : 'Ir para pagamento →'}
           </button>
         </div>
       )}

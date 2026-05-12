@@ -11,7 +11,7 @@ const client = new MercadoPagoConfig({ accessToken })
 
 export async function POST(req: Request) {
   try {
-    const { kitId, kitNome, kitPreco, backUrls, items: cartItems, freteValor = 0, freteServico } = await req.json()
+    const { kitId, kitNome, kitPreco, backUrls, items: cartItems, freteValor = 0, freteServico = 'Frete' } = await req.json()
 
     const mpItems = cartItems
       ? cartItems.map((i: { id: number; nome: string; preco: number; quantidade: number }) => ({
@@ -21,13 +21,22 @@ export async function POST(req: Request) {
           unit_price: Number(i.preco),
           currency_id: 'BRL',
         }))
-      : [{
-          id: String(kitId),
-          title: kitNome,
-          quantity: 1,
-          unit_price: Number(kitPreco) + Number(freteValor),
-          currency_id: 'BRL',
-        }]
+      : [
+          {
+            id: String(kitId),
+            title: kitNome,
+            quantity: 1,
+            unit_price: Number(kitPreco),
+            currency_id: 'BRL',
+          },
+          ...(Number(freteValor) > 0 ? [{
+            id: 'frete',
+            title: freteServico,
+            quantity: 1,
+            unit_price: Number(freteValor),
+            currency_id: 'BRL',
+          }] : []),
+        ]
 
     const userId = req.headers.get('x-user-id') || null
 
@@ -46,6 +55,11 @@ export async function POST(req: Request) {
           pending: 'https://taprapesca.com.br/obrigado?status=pending',
         },
         payment_methods: {
+          excluded_payment_types: [
+            { id: 'ticket' },
+            { id: 'bank_transfer' },
+            { id: 'atm' },
+          ],
           installments: 12,
           default_installments: 1,
         },
