@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
 import PurchaseEvent from "@/components/PurchaseEvent";
+import SalvarPedido from "@/components/SalvarPedido";
 
 export const metadata: Metadata = {
   title: "Pedido confirmado — Tá Pra Pesca",
@@ -21,6 +22,7 @@ export default function Obrigado({ searchParams }: Props) {
 
   return (
     <div style={styles.page}>
+      <SalvarPedido />
       <PurchaseTracker />
       {id && nome && preco > 0 && (
         <PurchaseEvent

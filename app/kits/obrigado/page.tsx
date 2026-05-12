@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PurchaseTracker } from "@/components/analytics/PurchaseTracker";
 import PurchaseEvent from "@/components/PurchaseEvent";
+import SalvarPedido from "@/components/SalvarPedido";
 import { kits } from "@/data/kits";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function Obrigado({ searchParams }: Props) {
 
   return (
     <div style={styles.page}>
+      <SalvarPedido />
       <PurchaseTracker />
       {kit && (
         <PurchaseEvent

@@ -12,8 +12,14 @@ const client = new MercadoPagoConfig({
 export async function POST(req: Request) {
   try {
     const body = await req.json()
+    console.log('[webhook] recebido:', JSON.stringify(body))
 
-    if (body.type !== 'payment') {
+    const isPaymentEvent =
+      body.type === 'payment' ||
+      body.action === 'payment.updated' ||
+      body.action === 'payment.created'
+
+    if (!isPaymentEvent) {
       return Response.json({ ok: true })
     }
 
