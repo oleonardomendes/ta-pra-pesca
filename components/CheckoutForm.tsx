@@ -303,19 +303,47 @@ export default function CheckoutForm({
             ))}
           </div>
 
-          <div className="cf-subtotal">
-            <div className="cf-subtotal-linha">
-              <span>Produto</span>
-              <span>{fmt(kitPreco)}</span>
+          <div style={{ background: '#fff', border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)', padding: '16px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '.1em',
+              textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>
+              Resumo do pedido
             </div>
-            <div className="cf-subtotal-linha">
-              <span>Frete</span>
-              <span>{freteSelected ? fmt(freteSelected.preco) : '—'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+              fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
+              <span>{kitNome}</span>
+              <span>R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
-            <div className="cf-subtotal-total">
-              <span>Total</span>
-              <span>{freteSelected ? fmt(totalComFrete) : '—'}</span>
+            {freteSelected && (
+              <div style={{ display: 'flex', justifyContent: 'space-between',
+                fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
+                <span>{freteSelected.empresa} {freteSelected.nome}</span>
+                <span>R$ {Number(freteSelected.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
+            {freteSelected && (
+              <div style={{ display: 'flex', justifyContent: 'space-between',
+                fontSize: '12px', color: 'var(--muted)', marginBottom: '12px' }}>
+                <span>Prazo estimado</span>
+                <span>{freteSelected.prazo} dias úteis</span>
+              </div>
+            )}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '700', fontSize: '15px', color: 'var(--g900)' }}>Total</span>
+              <span style={{ fontFamily: 'var(--ff-display)', fontSize: '28px',
+                color: 'var(--g700)', letterSpacing: '.02em' }}>
+                R$ {(Number(kitPreco) + Number(freteSelected?.preco || 0))
+                  .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
             </div>
+            {freteSelected && (
+              <div style={{ fontSize: '12px', color: 'var(--g500)', fontWeight: '600',
+                marginTop: '8px', textAlign: 'right' }}>
+                ⚡ PIX com 5% de desconto: R$ {((Number(kitPreco) + Number(freteSelected.preco)) * 0.95)
+                  .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </div>
+            )}
           </div>
 
           <button
@@ -333,21 +361,39 @@ export default function CheckoutForm({
         <div className="cf-section">
           <button className="cf-btn-back" onClick={() => setStep(2)}>← Alterar frete</button>
 
-          {/* Resumo */}
-          <div className="cf-resumo">
-            <div className="cf-resumo-titulo">Resumo do pedido</div>
-            <div className="cf-resumo-linha"><span>Produto</span><span>{kitNome}</span></div>
-            <div className="cf-resumo-linha">
-              <span>Endereço</span>
-              <span>{logradouro}, {numero}{complemento ? `, ${complemento}` : ''} — {bairro}, {cidade}/{estado}</span>
+          <div style={{ background: '#fff', border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)', padding: '16px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '.1em',
+              textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>
+              Resumo do pedido
             </div>
-            <div className="cf-resumo-linha">
-              <span>Frete</span>
-              <span>{freteSelected.nome} ({freteSelected.prazo} dias) — {fmt(freteSelected.preco)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+              fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
+              <span>{kitNome}</span>
+              <span>R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             </div>
-            <div className="cf-resumo-total">
-              <span>Total</span>
-              <span>{fmt(totalComFrete)}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+              fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
+              <span>{freteSelected.empresa} {freteSelected.nome}</span>
+              <span>R$ {Number(freteSelected.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+              fontSize: '12px', color: 'var(--muted)', marginBottom: '12px' }}>
+              <span>Prazo estimado</span>
+              <span>{freteSelected.prazo} dias úteis</span>
+            </div>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '700', fontSize: '15px', color: 'var(--g900)' }}>Total</span>
+              <span style={{ fontFamily: 'var(--ff-display)', fontSize: '28px',
+                color: 'var(--g700)', letterSpacing: '.02em' }}>
+                R$ {totalComFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--g500)', fontWeight: '600',
+              marginTop: '8px', textAlign: 'right' }}>
+              ⚡ PIX com 5% de desconto: R$ {(totalComFrete * 0.95)
+                .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </div>
           </div>
 
@@ -455,40 +501,6 @@ const styles = `
   .cf-frete-nome { font-size: 13px; font-weight: 700; color: var(--dark); }
   .cf-frete-prazo { font-size: 12px; color: var(--muted); }
   .cf-frete-preco { font-family: var(--ff-display); font-size: 18px; color: var(--g700); }
-
-  .cf-subtotal {
-    background: var(--cream); border-radius: var(--r-md, 10px);
-    padding: 16px; display: flex; flex-direction: column; gap: 8px;
-  }
-  .cf-subtotal-linha {
-    display: flex; justify-content: space-between;
-    font-size: 13px; color: var(--muted);
-  }
-  .cf-subtotal-total {
-    display: flex; justify-content: space-between;
-    font-size: 16px; font-weight: 700; color: var(--g900);
-    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px;
-  }
-
-  .cf-resumo {
-    background: var(--cream); border-radius: var(--r-md, 10px);
-    padding: 16px; display: flex; flex-direction: column; gap: 8px;
-    margin-bottom: 4px;
-  }
-  .cf-resumo-titulo {
-    font-size: 11px; font-weight: 700; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
-  }
-  .cf-resumo-linha {
-    display: flex; justify-content: space-between; gap: 16px;
-    font-size: 13px; color: var(--muted);
-  }
-  .cf-resumo-linha span:last-child { text-align: right; color: var(--dark); font-weight: 500; }
-  .cf-resumo-total {
-    display: flex; justify-content: space-between;
-    font-family: var(--ff-display); font-size: 22px; color: var(--g700);
-    border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px;
-  }
 
   .cf-divisor {
     display: flex; align-items: center; gap: 12px;

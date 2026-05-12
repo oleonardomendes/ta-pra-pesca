@@ -21,22 +21,14 @@ export async function POST(req: Request) {
           unit_price: Number(i.preco),
           currency_id: 'BRL',
         }))
-      : [
-          {
-            id: String(kitId),
-            title: kitNome,
-            quantity: 1,
-            unit_price: Number(kitPreco),
-            currency_id: 'BRL',
-          },
-          ...(Number(freteValor) > 0 ? [{
-            id: 'frete',
-            title: freteServico,
-            quantity: 1,
-            unit_price: Number(freteValor),
-            currency_id: 'BRL',
-          }] : []),
-        ]
+      : [{
+          id: String(kitId),
+          title: `${kitNome} + ${freteServico}`,
+          description: `Produto: R$ ${Number(kitPreco).toFixed(2).replace('.', ',')} | Frete: R$ ${Number(freteValor).toFixed(2).replace('.', ',')}`,
+          quantity: 1,
+          unit_price: Number(kitPreco) + Number(freteValor),
+          currency_id: 'BRL',
+        }]
 
     const userId = req.headers.get('x-user-id') || null
 
