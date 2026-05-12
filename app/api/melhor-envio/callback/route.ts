@@ -12,14 +12,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const credentials = {
-      grant_type: 'authorization_code',
-      client_id: process.env.MELHOR_ENVIO_CLIENT_ID!,
-      client_secret: process.env.MELHOR_ENVIO_CLIENT_SECRET!,
-      redirect_uri: 'https://taprapesca.com.br/api/melhor-envio/callback',
-      code,
-    }
-
     const tokenUrl = process.env.MELHOR_ENVIO_BASE_URL?.includes('sandbox')
       ? 'https://sandbox.melhorenvio.com.br/oauth/token'
       : 'https://www.melhorenvio.com.br/oauth/token'
@@ -27,12 +19,25 @@ export async function GET(req: NextRequest) {
     const res = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
         'User-Agent': 'TaPraPesca (contato@taprapesca.com.br)',
       },
-      body: JSON.stringify(credentials),
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: process.env.MELHOR_ENVIO_CLIENT_ID!,
+        client_secret: process.env.MELHOR_ENVIO_CLIENT_SECRET!,
+        redirect_uri: 'https://taprapesca.com.br/api/melhor-envio/callback',
+        code,
+      }).toString(),
+      redirect: 'manual',
     })
+
+    if (res.status === 301 || res.status === 302 || res.status === 307 || res.status === 308) {
+      const location = res.headers.get('location')
+      console.error('[ME callback] redirect inesperado para:', location)
+      return NextResponse.json({ error: 'Redirect inesperado', location }, { status: 500 })
+    }
 
     const data = await res.json()
 
