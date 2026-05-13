@@ -79,46 +79,67 @@ export async function POST(req: Request) {
 
       if (pedidoCompleto) {
         try {
-          await blingFetch('/pedidos', {
+          const hoje = new Date().toISOString().split('T')[0]
+          const itensPedido = Array.isArray(pedidoCompleto.itens)
+            ? pedidoCompleto.itens
+            : JSON.parse(pedidoCompleto.itens || '[]')
+
+          const blingBody = {
+            data: hoje,
+            situacao: { id: 6 },
+            contato: {
+              nome: data.payer?.first_name
+                ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
+                : data.payer?.email || 'Cliente',
+              email: data.payer?.email || '',
+              tipoPessoa: 'F',
+              numeroDocumento: pedidoCompleto.cpf?.replace(/\D/g, '') || '',
+            },
+            transporte: {
+              fretePorConta: 'D',
+              frete: Number(pedidoCompleto.frete_valor) || 0,
+              volumes: [{
+                servico: pedidoCompleto.frete_servico || 'Correios',
+                codigoRastreamento: '',
+              }],
+            },
+            enderecoEntrega: pedidoCompleto.endereco ? {
+              endereco: pedidoCompleto.endereco.logradouro || '',
+              numero: pedidoCompleto.endereco.numero || '',
+              complemento: pedidoCompleto.endereco.complemento || '',
+              bairro: pedidoCompleto.endereco.bairro || '',
+              municipio: pedidoCompleto.endereco.cidade || '',
+              uf: pedidoCompleto.endereco.estado || '',
+              cep: pedidoCompleto.endereco.cep?.replace(/\D/g, '') || '',
+              pais: 'Brasil',
+              nomePais: 'Brasil',
+            } : undefined,
+            itens: itensPedido.length > 0
+              ? itensPedido.map((item: any) => ({
+                  descricao: item.nome || 'Produto',
+                  quantidade: Number(item.quantidade) || 1,
+                  valor: Number(item.valor) || 0,
+                  unidade: 'UN',
+                  tipo: 'P',
+                }))
+              : [{
+                  descricao: 'Pedido Tá Pra Pesca',
+                  quantidade: 1,
+                  valor: Number(pedidoCompleto.total) - Number(pedidoCompleto.frete_valor || 0),
+                  unidade: 'UN',
+                  tipo: 'P',
+                }],
+          }
+
+          console.log('[webhook] enviando ao Bling:', JSON.stringify(blingBody))
+
+          const blingRes = await blingFetch('/pedidos/vendas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              numero: pedidoCompleto.mp_payment_id,
-              contato: {
-                nome: data.payer?.first_name
-                  ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
-                  : data.payer?.email || 'Cliente',
-                email: data.payer?.email,
-                documento: {
-                  tipo: 'CPF',
-                  numero: pedidoCompleto.cpf?.replace(/\D/g, '') || '',
-                },
-              },
-              transporte: {
-                transportadora: { nome: pedidoCompleto.frete_servico || 'Correios' },
-                fretePorConta: 'D',
-                frete: Number(pedidoCompleto.frete_valor) || 0,
-                volumes: [{ servico: pedidoCompleto.frete_servico || '' }],
-              },
-              enderecoEntrega: pedidoCompleto.endereco ? {
-                endereco: pedidoCompleto.endereco.logradouro,
-                numero: pedidoCompleto.endereco.numero,
-                complemento: pedidoCompleto.endereco.complemento || '',
-                bairro: pedidoCompleto.endereco.bairro,
-                municipio: pedidoCompleto.endereco.cidade,
-                uf: pedidoCompleto.endereco.estado,
-                cep: pedidoCompleto.endereco.cep?.replace(/\D/g, '') || '',
-              } : undefined,
-              itens: (JSON.parse(JSON.stringify(pedidoCompleto.itens)) || [])
-                .map((item: any) => ({
-                  descricao: item.nome,
-                  quantidade: item.quantidade || 1,
-                  valor: item.valor,
-                })),
-              total: Number(pedidoCompleto.total),
-            }),
+            body: JSON.stringify(blingBody),
           })
-          console.log('[webhook] pedido enviado ao Bling!')
+
+          console.log('[webhook] Bling respondeu:', JSON.stringify(blingRes))
         } catch (blingError: any) {
           console.error('[webhook] erro Bling:', blingError.message)
         }
