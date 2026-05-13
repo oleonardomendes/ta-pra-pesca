@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Props {
   qrCode: string
   qrCodeBase64: string
   kitPreco: number
   freteValor?: number
+  paymentId: string
 }
 
-export default function PixQRCode({ qrCode, qrCodeBase64, kitPreco, freteValor = 0 }: Props) {
+export default function PixQRCode({ qrCode, qrCodeBase64, kitPreco, freteValor = 0, paymentId }: Props) {
   const [copiado, setCopiado] = useState(false)
+  const [verificando, setVerificando] = useState(false)
 
   const copiar = async () => {
     await navigator.clipboard.writeText(qrCode)
@@ -22,6 +24,25 @@ export default function PixQRCode({ qrCode, qrCodeBase64, kitPreco, freteValor =
     style: 'currency',
     currency: 'BRL',
   })
+
+  useEffect(() => {
+    if (!paymentId) return
+
+    setVerificando(true)
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/mp/check-payment?id=${paymentId}`)
+        const data = await res.json()
+
+        if (data.status === 'approved') {
+          clearInterval(interval)
+          window.location.href = `/obrigado?payment_id=${paymentId}&status=approved`
+        }
+      } catch {}
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [paymentId])
 
   return (
     <div style={{
@@ -81,6 +102,27 @@ export default function PixQRCode({ qrCode, qrCodeBase64, kitPreco, freteValor =
         }}
       >
         {copiado ? '✓ Código copiado!' : 'Copiar código PIX'}
+      </button>
+
+      {verificando && (
+        <div style={{ textAlign: 'center', fontSize: '13px',
+          color: '#5C6B63', marginTop: '-8px' }}>
+          ⏳ Aguardando confirmação do pagamento...
+        </div>
+      )}
+
+      <button
+        onClick={() => { window.location.href = `/obrigado?payment_id=${paymentId}&status=approved` }}
+        style={{
+          width: '100%', padding: '12px',
+          background: 'transparent',
+          border: '1.5px solid #C5DDD5',
+          borderRadius: '50px', cursor: 'pointer',
+          fontSize: '13px', fontWeight: '600',
+          color: '#5C6B63',
+        }}
+      >
+        Já realizei o pagamento →
       </button>
 
       <div style={{ fontSize: '12px', color: '#5C6B63', textAlign: 'center' }}>

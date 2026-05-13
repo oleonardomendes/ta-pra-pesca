@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function PixButton({ kitNome, kitPreco, freteValor = 0 }: Props) {
-  const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string } | null>(null)
+  const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string; paymentId: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
 
@@ -35,7 +35,7 @@ export default function PixButton({ kitNome, kitPreco, freteValor = 0 }: Props) 
       })
       const data = await res.json()
       if (data.qrCode) {
-        setPixData({ qrCode: data.qrCode, qrCodeBase64: data.qrCodeBase64 })
+        setPixData({ qrCode: data.qrCode, qrCodeBase64: data.qrCodeBase64, paymentId: String(data.id || '') })
       } else {
         setErro('Erro ao gerar PIX. Tente novamente.')
       }
@@ -53,6 +53,7 @@ export default function PixButton({ kitNome, kitPreco, freteValor = 0 }: Props) 
         qrCodeBase64={pixData.qrCodeBase64}
         kitPreco={kitPreco}
         freteValor={freteValor}
+        paymentId={pixData.paymentId}
       />
     )
   }

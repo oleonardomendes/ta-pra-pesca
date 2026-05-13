@@ -312,13 +312,13 @@ export default function CheckoutForm({
             <div style={{ display: 'flex', justifyContent: 'space-between',
               fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
               <span>{kitNome}</span>
-              <span>R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             {freteSelected && (
               <div style={{ display: 'flex', justifyContent: 'space-between',
                 fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
                 <span>{freteSelected.empresa} {freteSelected.nome}</span>
-                <span>R$ {Number(freteSelected.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                <span>R$ {Number(freteSelected.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             )}
             {freteSelected && (
@@ -334,14 +334,14 @@ export default function CheckoutForm({
               <span style={{ fontFamily: 'var(--ff-display)', fontSize: '28px',
                 color: 'var(--g700)', letterSpacing: '.02em' }}>
                 R$ {(Number(kitPreco) + Number(freteSelected?.preco || 0))
-                  .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             {freteSelected && (
               <div style={{ fontSize: '12px', color: 'var(--g500)', fontWeight: '600',
                 marginTop: '8px', textAlign: 'right' }}>
-                ⚡ PIX com 5% de desconto: R$ {((Number(kitPreco) + Number(freteSelected.preco)) * 0.95)
-                  .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                ⚡ PIX com 5% de desconto: R$ {(Number(kitPreco) * 0.95 + Number(freteSelected.preco))
+                  .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             )}
           </div>
@@ -370,12 +370,12 @@ export default function CheckoutForm({
             <div style={{ display: 'flex', justifyContent: 'space-between',
               fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
               <span>{kitNome}</span>
-              <span>R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between',
               fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
               <span>{freteSelected.empresa} {freteSelected.nome}</span>
-              <span>R$ {Number(freteSelected.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+              <span>R$ {Number(freteSelected.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between',
               fontSize: '12px', color: 'var(--muted)', marginBottom: '12px' }}>
@@ -387,13 +387,13 @@ export default function CheckoutForm({
               <span style={{ fontWeight: '700', fontSize: '15px', color: 'var(--g900)' }}>Total</span>
               <span style={{ fontFamily: 'var(--ff-display)', fontSize: '28px',
                 color: 'var(--g700)', letterSpacing: '.02em' }}>
-                R$ {totalComFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                R$ {totalComFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--g500)', fontWeight: '600',
               marginTop: '8px', textAlign: 'right' }}>
-              ⚡ PIX com 5% de desconto: R$ {(totalComFrete * 0.95)
-                .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              ⚡ PIX com 5% de desconto: R$ {(kitPreco * 0.95 + freteSelected.preco)
+                .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
 
