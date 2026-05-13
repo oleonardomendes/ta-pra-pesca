@@ -5,10 +5,11 @@ import { useState } from 'react'
 interface Props {
   qrCode: string
   qrCodeBase64: string
-  valor: number
+  kitPreco: number
+  freteValor?: number
 }
 
-export default function PixQRCode({ qrCode, qrCodeBase64, valor }: Props) {
+export default function PixQRCode({ qrCode, qrCodeBase64, kitPreco, freteValor = 0 }: Props) {
   const [copiado, setCopiado] = useState(false)
 
   const copiar = async () => {
@@ -17,7 +18,7 @@ export default function PixQRCode({ qrCode, qrCodeBase64, valor }: Props) {
     setTimeout(() => setCopiado(false), 3000)
   }
 
-  const valorComDesconto = (valor * 0.95).toLocaleString('pt-BR', {
+  const valorComDesconto = (kitPreco * 0.95 + freteValor).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   })

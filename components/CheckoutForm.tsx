@@ -397,7 +397,7 @@ export default function CheckoutForm({
             </div>
           </div>
 
-          <PixButton kitNome={kitNome} kitPreco={totalComFrete} />
+          <PixButton kitNome={kitNome} kitPreco={kitPreco} freteValor={freteSelected.preco} />
 
           <div className="cf-divisor">
             <div className="cf-divisor-line" />

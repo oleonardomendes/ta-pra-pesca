@@ -9,14 +9,16 @@ const fmt = (n: number) =>
 interface Props {
   kitNome: string
   kitPreco: number
+  freteValor?: number
 }
 
-export default function PixButton({ kitNome, kitPreco }: Props) {
+export default function PixButton({ kitNome, kitPreco, freteValor = 0 }: Props) {
   const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
 
-  const precoComDesconto = Math.round(kitPreco * 0.95 * 100) / 100
+  const valorProdutoComDesconto = Math.round(kitPreco * 0.95 * 100) / 100
+  const valorTotal = Math.round((valorProdutoComDesconto + freteValor) * 100) / 100
 
   async function handleGerarPix() {
     setLoading(true)
@@ -27,7 +29,7 @@ export default function PixButton({ kitNome, kitPreco }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           formData: { payer: { email: 'pix@taprapesca.com.br' } },
-          amount: precoComDesconto,
+          amount: valorTotal,
           description: kitNome,
         }),
       })
@@ -49,7 +51,8 @@ export default function PixButton({ kitNome, kitPreco }: Props) {
       <PixQRCode
         qrCode={pixData.qrCode}
         qrCodeBase64={pixData.qrCodeBase64}
-        valor={precoComDesconto}
+        kitPreco={kitPreco}
+        freteValor={freteValor}
       />
     )
   }
@@ -77,10 +80,10 @@ export default function PixButton({ kitNome, kitPreco }: Props) {
       </div>
 
       <div style={{ fontSize: '24px', fontFamily: 'var(--ff-display)', color: 'var(--g700)', marginBottom: '4px' }}>
-        {fmt(precoComDesconto)}
+        {fmt(valorTotal)}
       </div>
       <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '16px' }}>
-        à vista no PIX (de {fmt(kitPreco)})
+        5% de desconto no produto · frete incluso
       </div>
 
       {erro && (
