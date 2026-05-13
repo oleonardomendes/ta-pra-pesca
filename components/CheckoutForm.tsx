@@ -146,16 +146,17 @@ export default function CheckoutForm({
       setCheckoutUrl(data.checkoutUrl || '')
 
       // Pré-registro do pedido com endereço e frete antes do redirecionamento
-      if (data.preferenceId) {
+      if (data.pedidoId && data.preferenceId) {
         fetch('/api/pedidos/pre-registro', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            pedidoId: data.pedidoId,
             mpPreferenceId: data.preferenceId,
-            endereco: { logradouro, numero, complemento, bairro, cidade, estado, cep },
+            endereco: { cep, logradouro, numero, complemento, bairro, cidade, estado },
             cpf,
             freteValor: freteSelected?.preco,
-            freteServico: `${freteSelected?.empresa} ${freteSelected?.nome}`,
+            freteServico: `${freteSelected?.empresa || ''} ${freteSelected?.nome || ''}`.trim(),
             itens: produtosParaFrete,
             total: Number(kitPreco) + Number(freteSelected?.preco || 0),
           }),

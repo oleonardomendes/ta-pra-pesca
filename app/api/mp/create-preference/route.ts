@@ -31,11 +31,13 @@ export async function POST(req: Request) {
         }]
 
     const userId = req.headers.get('x-user-id') || null
+    const pedidoId = crypto.randomUUID()
 
     const preference = new Preference(client)
     const result = await preference.create({
       body: {
         items: mpItems,
+        external_reference: pedidoId,
         metadata: {
           user_id: userId,
           frete_valor: freteValor,
@@ -64,7 +66,7 @@ export async function POST(req: Request) {
       ? result.sandbox_init_point
       : result.init_point
 
-    return NextResponse.json({ preferenceId: result.id, checkoutUrl })
+    return NextResponse.json({ preferenceId: result.id, checkoutUrl, pedidoId })
   } catch (e: any) {
     return NextResponse.json(
       { error: e.message },

@@ -1,5 +1,7 @@
-import { supabase } from '@/lib/supabase'
 import { MercadoPagoConfig, Payment } from 'mercadopago'
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+import { blingFetch } from '@/lib/bling'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,92 +16,156 @@ export async function POST(req: Request) {
     const body = await req.json()
     console.log('[webhook] recebido:', JSON.stringify(body))
 
-    const isPaymentEvent =
-      body.type === 'payment' ||
-      body.action === 'payment.updated' ||
-      body.action === 'payment.created'
-
-    if (!isPaymentEvent) {
-      return Response.json({ ok: true })
+    if (body.type !== 'payment') {
+      return NextResponse.json({ ok: true })
     }
 
     const paymentId = body.data?.id
-    if (!paymentId) return Response.json({ ok: true })
+    if (!paymentId) return NextResponse.json({ ok: true })
 
+    // Busca dados do pagamento no MP
+    let data: any
     try {
       const payment = new Payment(client)
-      const data = await payment.get({ id: paymentId })
+      data = await payment.get({ id: paymentId })
+    } catch (e: any) {
+      console.log('[webhook] pagamento não encontrado:', paymentId)
+      return NextResponse.json({ ok: true })
+    }
 
-      if (!data || data.status !== 'approved') {
-        console.log('[webhook] pagamento não aprovado ou não encontrado:', paymentId)
-        return Response.json({ ok: true, skipped: true })
-      }
+    console.log('[webhook] status:', data.status, 'ref:', data.external_reference)
 
-      const userId = data.metadata?.user_id || null
-      console.log('[webhook] user_id:', userId)
+    if (data.status !== 'approved') {
+      return NextResponse.json({ ok: true })
+    }
 
-      const itens = (data.additional_info?.items || []).map((item: any) => ({
-        id: item.id,
-        nome: item.title,
-        quantidade: Number(item.quantity) || 1,
-        valor: Number(item.unit_price) || 0,
-      }))
-      console.log('[webhook] itens:', itens)
+    const externalRef = data.external_reference // = pedidoId (UUID)
 
-      // Tenta encontrar pré-registro pelo mp_payment_id (reentrada)
-      const { data: pedidoPorPayment } = await supabase
+    let pedidoId: string | null = null
+
+    if (externalRef) {
+      // Atualiza o pré-registro existente pelo external_reference
+      const { data: updated, error } = await supabase
         .from('pedidos')
-        .select('id')
-        .eq('mp_payment_id', String(paymentId))
-        .maybeSingle()
-
-      if (pedidoPorPayment) {
-        await supabase
-          .from('pedidos')
-          .update({ status: 'aprovado', updated_at: new Date().toISOString() })
-          .eq('id', pedidoPorPayment.id)
-        console.log('[webhook] pedido já existia, status atualizado:', pedidoPorPayment.id)
-        return Response.json({ ok: true })
-      }
-
-      // Tenta encontrar pré-registro pela mp_preference_id (merchant order)
-      const mpPreferenceId = data.order?.id ? String(data.order.id) : null
-      const { data: pedidoPorPreferencia } = await supabase
-        .from('pedidos')
-        .select('id, itens, endereco, cpf')
-        .eq('mp_preference_id', mpPreferenceId)
-        .maybeSingle()
-
-      if (pedidoPorPreferencia) {
-        await supabase
-          .from('pedidos')
-          .update({
-            status: 'aprovado',
-            mp_payment_id: String(paymentId),
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', pedidoPorPreferencia.id)
-        console.log('[webhook] pré-registro atualizado:', pedidoPorPreferencia.id)
-      } else {
-        // Fallback: cria pedido com dados disponíveis
-        await supabase.from('pedidos').insert({
-          user_id: userId,
+        .update({
+          status: 'aprovado',
           mp_payment_id: String(paymentId),
-          mp_preference_id: mpPreferenceId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', externalRef)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('[webhook] erro ao atualizar:', error)
+      } else {
+        console.log('[webhook] pedido atualizado:', updated.id)
+        pedidoId = updated.id
+      }
+    }
+
+    // Se não encontrou pelo external_reference, cria novo (fallback)
+    if (!pedidoId) {
+      const { data: novo } = await supabase
+        .from('pedidos')
+        .insert({
+          mp_payment_id: String(paymentId),
           status: 'aprovado',
           total: data.transaction_amount || 0,
-          itens,
+          itens: [],
+          updated_at: new Date().toISOString(),
         })
-        console.log('[webhook] pedido criado via fallback')
+        .select()
+        .single()
+
+      pedidoId = novo?.id || null
+      console.log('[webhook] novo pedido criado (fallback):', pedidoId)
+    }
+
+    // Busca dados completos para o Bling
+    const { data: pedidoCompleto } = await supabase
+      .from('pedidos')
+      .select('*')
+      .eq('id', pedidoId!)
+      .single()
+
+    if (!pedidoCompleto) {
+      return NextResponse.json({ ok: true })
+    }
+
+    // Envia ao Bling
+    try {
+      const hoje = new Date().toISOString().split('T')[0]
+      const itensPedido = Array.isArray(pedidoCompleto.itens)
+        ? pedidoCompleto.itens
+        : JSON.parse(typeof pedidoCompleto.itens === 'string'
+            ? pedidoCompleto.itens : '[]')
+
+      const blingBody = {
+        data: hoje,
+        situacao: { id: 6 },
+        contato: {
+          nome: data.payer?.first_name
+            ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
+            : data.payer?.email || 'Cliente',
+          email: data.payer?.email || '',
+          tipoPessoa: 'F',
+          numeroDocumento: pedidoCompleto.cpf?.replace(/\D/g, '') || '',
+        },
+        transporte: {
+          fretePorConta: 'D',
+          frete: Number(pedidoCompleto.frete_valor) || 0,
+          volumes: [{
+            servico: pedidoCompleto.frete_servico || 'Correios',
+          }],
+        },
+        enderecoEntrega: pedidoCompleto.endereco ? {
+          endereco: pedidoCompleto.endereco.logradouro || '',
+          numero: pedidoCompleto.endereco.numero || '',
+          complemento: pedidoCompleto.endereco.complemento || '',
+          bairro: pedidoCompleto.endereco.bairro || '',
+          municipio: pedidoCompleto.endereco.cidade || '',
+          uf: pedidoCompleto.endereco.estado || '',
+          cep: (pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
+          pais: 'Brasil',
+          nomePais: 'Brasil',
+        } : undefined,
+        itens: itensPedido.length > 0
+          ? itensPedido.map((item: any) => ({
+              descricao: item.nome || 'Produto',
+              quantidade: Number(item.quantidade) || 1,
+              valor: Number(item.valor) || 0,
+              unidade: 'UN',
+              tipo: 'P',
+            }))
+          : [{
+              descricao: 'Pedido Tá Pra Pesca',
+              quantidade: 1,
+              valor: Math.max(
+                0,
+                Number(pedidoCompleto.total) - Number(pedidoCompleto.frete_valor || 0)
+              ),
+              unidade: 'UN',
+              tipo: 'P',
+            }],
       }
 
-      return Response.json({ ok: true })
-    } catch (e: any) {
-      console.log('[webhook] payment_id não encontrado:', paymentId, e.message)
-      return Response.json({ ok: true, skipped: true })
+      console.log('[webhook] enviando Bling:', JSON.stringify(blingBody))
+      const blingRes = await blingFetch('/pedidos/vendas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(blingBody),
+      })
+      console.log('[webhook] Bling ok:', JSON.stringify(blingRes))
+
+    } catch (blingErr: any) {
+      console.error('[webhook] erro Bling:', blingErr.message)
     }
+
+    return NextResponse.json({ ok: true })
+
   } catch (e: any) {
-    console.error('[webhook] erro ao parsear body:', e.message)
-    return Response.json({ ok: true, skipped: true })
+    console.error('[webhook] erro geral:', e.message)
+    return NextResponse.json({ ok: true })
   }
 }
