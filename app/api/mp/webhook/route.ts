@@ -35,28 +35,62 @@ export async function POST(req: Request) {
         return Response.json({ ok: true, skipped: true })
       }
 
-      // Busca pedido existente pelo mp_payment_id
-      const { data: pedidoExistente } = await supabase
+      const userId = data.metadata?.user_id || null
+      console.log('[webhook] user_id:', userId)
+
+      const itens = (data.additional_info?.items || []).map((item: any) => ({
+        id: item.id,
+        nome: item.title,
+        quantidade: Number(item.quantity) || 1,
+        valor: Number(item.unit_price) || 0,
+      }))
+      console.log('[webhook] itens:', itens)
+
+      // Tenta encontrar pré-registro pelo mp_payment_id (reentrada)
+      const { data: pedidoPorPayment } = await supabase
         .from('pedidos')
         .select('id')
         .eq('mp_payment_id', String(paymentId))
-        .single()
+        .maybeSingle()
 
-      if (pedidoExistente) {
+      if (pedidoPorPayment) {
         await supabase
           .from('pedidos')
           .update({ status: 'aprovado', updated_at: new Date().toISOString() })
-          .eq('id', pedidoExistente.id)
+          .eq('id', pedidoPorPayment.id)
+        console.log('[webhook] pedido já existia, status atualizado:', pedidoPorPayment.id)
+        return Response.json({ ok: true })
+      }
+
+      // Tenta encontrar pré-registro pela mp_preference_id (merchant order)
+      const mpPreferenceId = data.order?.id ? String(data.order.id) : null
+      const { data: pedidoPorPreferencia } = await supabase
+        .from('pedidos')
+        .select('id, itens, endereco, cpf')
+        .eq('mp_preference_id', mpPreferenceId)
+        .maybeSingle()
+
+      if (pedidoPorPreferencia) {
+        await supabase
+          .from('pedidos')
+          .update({
+            status: 'aprovado',
+            mp_payment_id: String(paymentId),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', pedidoPorPreferencia.id)
+        console.log('[webhook] pré-registro atualizado:', pedidoPorPreferencia.id)
       } else {
-        const userId = data.metadata?.user_id || null
+        // Fallback: cria pedido com dados disponíveis
         await supabase.from('pedidos').insert({
           user_id: userId,
           mp_payment_id: String(paymentId),
-          mp_preference_id: data.order?.id ? String(data.order.id) : null,
+          mp_preference_id: mpPreferenceId,
           status: 'aprovado',
           total: data.transaction_amount || 0,
-          itens: data.additional_info?.items || [],
+          itens,
         })
+        console.log('[webhook] pedido criado via fallback')
       }
 
       return Response.json({ ok: true })
