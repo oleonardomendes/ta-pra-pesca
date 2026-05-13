@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { blingFetch } from '@/lib/bling'
 import { MercadoPagoConfig, Payment } from 'mercadopago'
 
 export const dynamic = 'force-dynamic'
@@ -46,51 +47,81 @@ export async function POST(req: Request) {
       }))
       console.log('[webhook] itens:', itens)
 
-      // Tenta encontrar pré-registro pelo mp_payment_id (reentrada)
-      const { data: pedidoPorPayment } = await supabase
-        .from('pedidos')
-        .select('id')
-        .eq('mp_payment_id', String(paymentId))
-        .maybeSingle()
+      const externalRef = data.external_reference || null
 
-      if (pedidoPorPayment) {
-        await supabase
-          .from('pedidos')
-          .update({ status: 'aprovado', updated_at: new Date().toISOString() })
-          .eq('id', pedidoPorPayment.id)
-        console.log('[webhook] pedido já existia, status atualizado:', pedidoPorPayment.id)
-        return Response.json({ ok: true })
-      }
-
-      // Tenta encontrar pré-registro pela mp_preference_id (merchant order)
-      const mpPreferenceId = data.order?.id ? String(data.order.id) : null
-      const { data: pedidoPorPreferencia } = await supabase
-        .from('pedidos')
-        .select('id, itens, endereco, cpf')
-        .eq('mp_preference_id', mpPreferenceId)
-        .maybeSingle()
-
-      if (pedidoPorPreferencia) {
-        await supabase
+      if (externalRef) {
+        const { error } = await supabase
           .from('pedidos')
           .update({
             status: 'aprovado',
             mp_payment_id: String(paymentId),
             updated_at: new Date().toISOString(),
           })
-          .eq('id', pedidoPorPreferencia.id)
-        console.log('[webhook] pré-registro atualizado:', pedidoPorPreferencia.id)
+          .eq('id', externalRef)
+        console.log('[webhook] pedido atualizado:', externalRef, error)
       } else {
-        // Fallback: cria pedido com dados disponíveis
         await supabase.from('pedidos').insert({
           user_id: userId,
           mp_payment_id: String(paymentId),
-          mp_preference_id: mpPreferenceId,
           status: 'aprovado',
           total: data.transaction_amount || 0,
           itens,
         })
-        console.log('[webhook] pedido criado via fallback')
+        console.log('[webhook] pedido criado via fallback (sem external_reference)')
+      }
+
+      // Busca dados completos para enviar ao Bling
+      const { data: pedidoCompleto } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('id', externalRef || '')
+        .single()
+
+      if (pedidoCompleto) {
+        try {
+          await blingFetch('/pedidos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              numero: pedidoCompleto.mp_payment_id,
+              contato: {
+                nome: data.payer?.first_name
+                  ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
+                  : data.payer?.email || 'Cliente',
+                email: data.payer?.email,
+                documento: {
+                  tipo: 'CPF',
+                  numero: pedidoCompleto.cpf?.replace(/\D/g, '') || '',
+                },
+              },
+              transporte: {
+                transportadora: { nome: pedidoCompleto.frete_servico || 'Correios' },
+                fretePorConta: 'D',
+                frete: Number(pedidoCompleto.frete_valor) || 0,
+                volumes: [{ servico: pedidoCompleto.frete_servico || '' }],
+              },
+              enderecoEntrega: pedidoCompleto.endereco ? {
+                endereco: pedidoCompleto.endereco.logradouro,
+                numero: pedidoCompleto.endereco.numero,
+                complemento: pedidoCompleto.endereco.complemento || '',
+                bairro: pedidoCompleto.endereco.bairro,
+                municipio: pedidoCompleto.endereco.cidade,
+                uf: pedidoCompleto.endereco.estado,
+                cep: pedidoCompleto.endereco.cep?.replace(/\D/g, '') || '',
+              } : undefined,
+              itens: (JSON.parse(JSON.stringify(pedidoCompleto.itens)) || [])
+                .map((item: any) => ({
+                  descricao: item.nome,
+                  quantidade: item.quantidade || 1,
+                  valor: item.valor,
+                })),
+              total: Number(pedidoCompleto.total),
+            }),
+          })
+          console.log('[webhook] pedido enviado ao Bling!')
+        } catch (blingError: any) {
+          console.error('[webhook] erro Bling:', blingError.message)
+        }
       }
 
       return Response.json({ ok: true })

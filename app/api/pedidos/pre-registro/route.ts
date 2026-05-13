@@ -7,6 +7,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
     const {
+      pedidoId,
       mpPreferenceId,
       endereco,
       cpf,
@@ -19,19 +20,22 @@ export async function POST(req: Request) {
     const supabaseServer = createSupabaseServerClient()
     const { data: { user } } = await supabaseServer.auth.getUser()
 
+    const insertPayload: Record<string, any> = {
+      user_id: user?.id || null,
+      mp_preference_id: mpPreferenceId,
+      status: 'pendente',
+      total: Number(total),
+      itens: itens || [],
+      endereco: endereco || null,
+      cpf: cpf || null,
+      frete_valor: Number(freteValor) || null,
+      frete_servico: freteServico || null,
+    }
+    if (pedidoId) insertPayload.id = pedidoId
+
     const { data, error } = await supabase
       .from('pedidos')
-      .insert({
-        user_id: user?.id || null,
-        mp_preference_id: mpPreferenceId,
-        status: 'pendente',
-        total: Number(total),
-        itens: itens || [],
-        endereco: endereco || null,
-        cpf: cpf || null,
-        frete_valor: Number(freteValor) || null,
-        frete_servico: freteServico || null,
-      })
+      .insert(insertPayload)
       .select()
       .single()
 

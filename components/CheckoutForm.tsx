@@ -142,16 +142,17 @@ export default function CheckoutForm({
           ...(backUrls ? { backUrls } : {}),
         }),
       })
-      const data = await res.json()
-      setCheckoutUrl(data.checkoutUrl || '')
+      const { preferenceId, checkoutUrl: url, pedidoId } = await res.json()
+      setCheckoutUrl(url || '')
 
       // Pré-registro do pedido com endereço e frete antes do redirecionamento
-      if (data.preferenceId) {
+      if (preferenceId) {
         fetch('/api/pedidos/pre-registro', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            mpPreferenceId: data.preferenceId,
+            pedidoId,
+            mpPreferenceId: preferenceId,
             endereco: { logradouro, numero, complemento, bairro, cidade, estado, cep },
             cpf,
             freteValor: freteSelected?.preco,
