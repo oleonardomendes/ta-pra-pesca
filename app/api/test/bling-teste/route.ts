@@ -62,20 +62,54 @@ export async function GET(req: Request) {
             tipo: 'F',
             situacao: 'A',
             numeroDocumento: cpfTesteFormatado,
-            endereco: 'Rua das Flores',
-            numero: '100',
-            complemento: '',
-            bairro: 'Centro',
-            municipio: 'São Paulo',
-            uf: 'SP',
-            cep: '01310100',
-            pais: 'Brasil',
+            endereco: {
+              geral: {
+                endereco: 'Rua das Flores',
+                cep: '01310100',
+                bairro: 'Centro',
+                municipio: 'São Paulo',
+                uf: 'SP',
+                numero: '100',
+                complemento: '',
+              },
+            },
           }),
         })
         contatoId = contato?.data?.id
         console.log('[teste-bling] contato criado:', contatoId)
       } catch (e: any) {
         console.log('[teste-bling] erro criar contato:', e.message)
+      }
+    }
+
+    // PUT para garantir CPF e endereço atualizados
+    if (contatoId) {
+      try {
+        await delay(300)
+        const putRes = await blingFetch(`/contatos/${contatoId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: 'Cliente Teste Site',
+            tipo: 'F',
+            situacao: 'A',
+            numeroDocumento: cpfTesteFormatado,
+            endereco: {
+              geral: {
+                endereco: 'Rua das Flores',
+                cep: '01310100',
+                bairro: 'Centro',
+                municipio: 'São Paulo',
+                uf: 'SP',
+                numero: '100',
+                complemento: '',
+              },
+            },
+          }),
+        })
+        console.log('[teste-bling] PUT contato:', JSON.stringify(putRes))
+      } catch (putErr: any) {
+        console.error('[teste-bling] PUT contato erro:', putErr.message)
       }
     }
 

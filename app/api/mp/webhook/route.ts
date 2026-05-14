@@ -182,27 +182,30 @@ async function processarPedido(body: any) {
           contatoId = encontrado.id
           console.log('[webhook] contato existente encontrado:', contatoId, encontrado.nome)
 
-          // Atualiza endereço com campos planos
+          // Atualiza endereço no formato correto
           try {
             await delay(300)
             await blingFetch(`/contatos/${contatoId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                nome: encontrado.nome,
+                nome: nomeCliente,
                 tipo: 'F',
                 situacao: 'A',
-                endereco: enderecoParsed?.logradouro || '',
-                numero: enderecoParsed?.numero || '',
-                complemento: enderecoParsed?.complemento || '',
-                bairro: enderecoParsed?.bairro || '',
-                municipio: enderecoParsed?.cidade || '',
-                uf: enderecoParsed?.estado || '',
-                cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
-                pais: 'Brasil',
+                endereco: {
+                  geral: {
+                    endereco: enderecoParsed?.logradouro || '',
+                    cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                    bairro: enderecoParsed?.bairro || '',
+                    municipio: enderecoParsed?.cidade || '',
+                    uf: enderecoParsed?.estado || '',
+                    numero: enderecoParsed?.numero || '',
+                    complemento: enderecoParsed?.complemento || '',
+                  },
+                },
               }),
             })
-            console.log('[webhook] contato atualizado com endereço plano')
+            console.log('[webhook] contato atualizado com endereco.geral')
           } catch (upErr: any) {
             console.log('[webhook] não atualizou endereço:', upErr.message.slice(0, 80))
           }
@@ -225,14 +228,17 @@ async function processarPedido(body: any) {
             situacao: 'A',
             numeroDocumento: cpfLimpo || undefined,
             email: emailValido,
-            endereco: enderecoParsed?.logradouro || '',
-            numero: enderecoParsed?.numero || '',
-            complemento: enderecoParsed?.complemento || '',
-            bairro: enderecoParsed?.bairro || '',
-            municipio: enderecoParsed?.cidade || '',
-            uf: enderecoParsed?.estado || '',
-            cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
-            pais: 'Brasil',
+            endereco: {
+              geral: {
+                endereco: enderecoParsed?.logradouro || '',
+                cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                bairro: enderecoParsed?.bairro || '',
+                municipio: enderecoParsed?.cidade || '',
+                uf: enderecoParsed?.estado || '',
+                numero: enderecoParsed?.numero || '',
+                complemento: enderecoParsed?.complemento || '',
+              },
+            },
           }),
         })
         contatoId = res?.data?.id || null
@@ -275,14 +281,17 @@ async function processarPedido(body: any) {
             tipo: 'F',
             situacao: 'A',
             email: emailValido,
-            endereco: enderecoParsed?.logradouro || '',
-            numero: enderecoParsed?.numero || '',
-            complemento: enderecoParsed?.complemento || '',
-            bairro: enderecoParsed?.bairro || '',
-            municipio: enderecoParsed?.cidade || '',
-            uf: enderecoParsed?.estado || '',
-            cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
-            pais: 'Brasil',
+            endereco: {
+              geral: {
+                endereco: enderecoParsed?.logradouro || '',
+                cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                bairro: enderecoParsed?.bairro || '',
+                municipio: enderecoParsed?.cidade || '',
+                uf: enderecoParsed?.estado || '',
+                numero: enderecoParsed?.numero || '',
+                complemento: enderecoParsed?.complemento || '',
+              },
+            },
           }),
         })
         contatoId = res?.data?.id || null
