@@ -14,16 +14,24 @@ const client = new MercadoPagoConfig({
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json()
-    console.log('[webhook] recebido:', JSON.stringify(body))
+  const body = await req.json()
+  console.log('[webhook] recebido:', JSON.stringify(body))
 
-    if (body.type !== 'payment') {
-      return NextResponse.json({ ok: true })
-    }
+  // Dispara processamento em background (sem await)
+  processarPedido(body).catch(e =>
+    console.error('[webhook] erro background:', e.message)
+  )
+
+  // Responde imediatamente ao MP
+  return NextResponse.json({ ok: true })
+}
+
+async function processarPedido(body: any) {
+  try {
+    if (body.type !== 'payment') return
 
     const paymentId = body.data?.id
-    if (!paymentId) return NextResponse.json({ ok: true })
+    if (!paymentId) return
 
     // Busca dados do pagamento no MP
     let data: any
@@ -32,14 +40,12 @@ export async function POST(req: Request) {
       data = await payment.get({ id: paymentId })
     } catch (e: any) {
       console.log('[webhook] pagamento não encontrado:', paymentId)
-      return NextResponse.json({ ok: true })
+      return
     }
 
     console.log('[webhook] status:', data.status, 'ref:', data.external_reference)
 
-    if (data.status !== 'approved') {
-      return NextResponse.json({ ok: true })
-    }
+    if (data.status !== 'approved') return
 
     const externalRef = data.external_reference
 
@@ -90,9 +96,7 @@ export async function POST(req: Request) {
       .eq('id', pedidoId!)
       .single()
 
-    if (!pedidoCompleto) {
-      return NextResponse.json({ ok: true })
-    }
+    if (!pedidoCompleto) return
 
     // Lock distribuído: só processa se bling_pedido_id ainda for null
     const { data: lockResult } = await supabase
@@ -105,7 +109,7 @@ export async function POST(req: Request) {
 
     if (!lockResult) {
       console.log('[webhook] pedido já sendo processado por outro webhook')
-      return NextResponse.json({ ok: true })
+      return
     }
 
     console.log('[webhook] lock adquirido, processando Bling...')
@@ -251,7 +255,7 @@ export async function POST(req: Request) {
       await supabase.from('pedidos')
         .update({ bling_pedido_id: null })
         .eq('id', pedidoId!)
-      return NextResponse.json({ ok: true })
+      return
     }
 
     // ============================================
@@ -355,17 +359,13 @@ export async function POST(req: Request) {
           .update({ bling_pedido_id: 'duplicata-bling' })
           .eq('id', pedidoId!)
       } else {
-        // Erro real — libera o lock para nova tentativa
         await supabase.from('pedidos')
           .update({ bling_pedido_id: null })
           .eq('id', pedidoId!)
       }
     }
 
-    return NextResponse.json({ ok: true })
-
   } catch (e: any) {
     console.error('[webhook] erro geral:', e.message)
-    return NextResponse.json({ ok: true })
   }
 }
