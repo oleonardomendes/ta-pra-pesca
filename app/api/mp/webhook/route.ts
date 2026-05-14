@@ -2,6 +2,7 @@ import { MercadoPagoConfig, Payment } from 'mercadopago'
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { blingFetch } from '@/lib/bling'
+import { melhorEnvioFetch } from '@/lib/melhor-envio'
 
 export const dynamic = 'force-dynamic'
 
@@ -383,6 +384,81 @@ async function processarPedido(body: any) {
       await supabase.from('pedidos')
         .update({ bling_pedido_id: String(blingPedidoId) })
         .eq('id', pedidoId!)
+
+      // Adiciona ao carrinho do Melhor Envio
+      try {
+        await delay(500)
+
+        const meCarrinho = await melhorEnvioFetch('/me/cart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service: Number(pedidoCompleto.frete_servico_id),
+            from: {
+              name: 'Tá Pra Pesca',
+              postal_code: process.env.MELHOR_ENVIO_ORIGIN_CEP?.replace(/\D/g, ''),
+            },
+            to: {
+              name: nomeCliente,
+              postal_code: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+              address: enderecoParsed?.logradouro || '',
+              number: enderecoParsed?.numero || '',
+              complement: enderecoParsed?.complemento || '',
+              district: enderecoParsed?.bairro || '',
+              city: enderecoParsed?.cidade || '',
+              state_abbr: enderecoParsed?.estado || '',
+              document: cpfLimpo || '',
+              email: emailValido || '',
+            },
+            products: itensPedido.map((item: any) => ({
+              name: item.nome,
+              quantity: Number(item.quantidade) || 1,
+              unitary_value: Number(item.valor) || 0,
+              weight: Number(item.peso) || 0.5,
+            })),
+            volumes: itensPedido.map((item: any) => ({
+              height: Number(item.altura) || 15,
+              width: Number(item.largura) || 15,
+              length: Number(item.comprimento) || 30,
+              weight: Number(item.peso) || 0.5,
+            })),
+            options: {
+              insurance_value: Number(pedidoCompleto.total) || 0,
+              receipt: false,
+              own_hand: false,
+              tags: [{
+                tag: pedidoCompleto.id,
+                url: `https://taprapesca.com.br/admin/pedidos/${pedidoCompleto.id}`,
+              }],
+            },
+          }),
+        })
+
+        const meCarrinhoId = meCarrinho?.id
+        console.log('[webhook] ME carrinho criado:', meCarrinhoId)
+
+        if (meCarrinhoId) {
+          await supabase.from('pedidos')
+            .update({ me_carrinho_id: meCarrinhoId })
+            .eq('id', pedidoId!)
+
+          await delay(400)
+          await blingFetch(`/pedidos/vendas/${blingPedidoId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              observacoesInternas: `ME Carrinho ID: ${meCarrinhoId} | ` +
+                itensPedido.map((item: any) =>
+                  `${item.nome}: ${item.peso || 0.5}kg ` +
+                  `${item.altura || 15}x${item.largura || 15}x${item.comprimento || 30}cm`
+                ).join(' | '),
+            }),
+          })
+          console.log('[webhook] ME ID salvo no Bling')
+        }
+      } catch (meErr: any) {
+        console.log('[webhook] erro ME carrinho:', meErr.message)
+      }
 
     } catch (bErr: any) {
       console.error('[webhook] erro criar pedido Bling:', bErr.message)

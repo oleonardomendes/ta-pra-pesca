@@ -83,3 +83,37 @@ export async function calcularFrete(params: {
     }))
     .sort((a: any, b: any) => a.preco - b.preco)
 }
+
+export async function melhorEnvioFetch(
+  endpoint: string,
+  options?: RequestInit
+): Promise<any> {
+  const token = await getMEToken()
+
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'User-Agent': 'TaPraPesca (contato@taprapesca.com.br)',
+      ...(options?.headers ?? {}),
+    },
+  })
+
+  const text = await res.text()
+  if (!text || text.trim() === '') return { ok: true }
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    return { ok: true, raw: text }
+  }
+
+  if (!res.ok) {
+    throw new Error(`ME API error (${res.status}): ${text}`)
+  }
+
+  return parsed
+}
