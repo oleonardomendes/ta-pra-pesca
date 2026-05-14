@@ -50,6 +50,7 @@ export default function CheckoutForm({
 }: Props) {
   const [step, setStep] = useState(1)
   const [checkoutUrl, setCheckoutUrl] = useState('')
+  const [pedidoId, setPedidoId] = useState('')
   const [loadingPayment, setLoadingPayment] = useState(false)
 
   // Endereço
@@ -142,16 +143,17 @@ export default function CheckoutForm({
           ...(backUrls ? { backUrls } : {}),
         }),
       })
-      const { preferenceId, checkoutUrl: url, pedidoId } = await res.json()
+      const { preferenceId, checkoutUrl: url, pedidoId: pid } = await res.json()
       setCheckoutUrl(url || '')
+      if (pid) setPedidoId(pid)
 
       // Pré-registro do pedido com endereço e frete antes do redirecionamento
-      if (pedidoId && preferenceId) {
+      if (pid && preferenceId) {
         fetch('/api/pedidos/pre-registro', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pedidoId,
+            pedidoId: pid,
             mpPreferenceId: preferenceId,
             endereco: { cep, logradouro, numero, complemento, bairro, cidade, estado },
             cpf,
@@ -415,7 +417,7 @@ export default function CheckoutForm({
             </div>
           </div>
 
-          <PixButton kitNome={kitNome} kitPreco={kitPreco} freteValor={freteSelected.preco} />
+          <PixButton kitNome={kitNome} kitPreco={kitPreco} freteValor={freteSelected.preco} pedidoId={pedidoId} />
 
           <div className="cf-divisor">
             <div className="cf-divisor-line" />

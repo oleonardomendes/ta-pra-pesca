@@ -12,7 +12,7 @@ const client = new MercadoPagoConfig({
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { formData, amount, description } = body
+    const { formData, amount, description, pedidoId } = body
 
     const payment = new Payment(client)
     const result = await payment.create({
@@ -20,12 +20,11 @@ export async function POST(req: Request) {
         transaction_amount: Number(amount),
         description,
         payment_method_id: 'pix',
+        external_reference: pedidoId || '',
         payer: {
-          email: formData?.payer?.email || 'cliente@taprapesca.com.br',
-          first_name: formData?.payer?.firstName || '',
-          last_name: formData?.payer?.lastName || '',
+          email: formData?.payer?.email || 'pix@taprapesca.com.br',
         },
-        notification_url: 'https://taprapesca.com.br/api/mp/webhook',
+        notification_url: 'https://www.taprapesca.com.br/api/mp/webhook',
       },
     })
 

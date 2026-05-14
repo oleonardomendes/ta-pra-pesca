@@ -10,9 +10,10 @@ interface Props {
   kitNome: string
   kitPreco: number
   freteValor?: number
+  pedidoId?: string
 }
 
-export default function PixButton({ kitNome, kitPreco, freteValor = 0 }: Props) {
+export default function PixButton({ kitNome, kitPreco, freteValor = 0, pedidoId }: Props) {
   const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string; paymentId: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
@@ -29,8 +30,9 @@ export default function PixButton({ kitNome, kitPreco, freteValor = 0 }: Props) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           formData: { payer: { email: 'pix@taprapesca.com.br' } },
-          amount: valorTotal,
+          amount: Math.round((kitPreco * 0.95 + (freteValor || 0)) * 100) / 100,
           description: kitNome,
+          pedidoId: pedidoId,
         }),
       })
       const data = await res.json()
