@@ -93,6 +93,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true })
     }
 
+    // Evita duplicata: se já foi enviado ao Bling, encerra
+    if (pedidoCompleto.bling_pedido_id) {
+      console.log('[webhook] pedido já enviado ao Bling:', pedidoCompleto.bling_pedido_id)
+      return NextResponse.json({ ok: true })
+    }
+
     // Envia ao Bling
     try {
       const hoje = new Date().toISOString().split('T')[0]
@@ -210,6 +216,15 @@ export async function POST(req: Request) {
         body: JSON.stringify(blingBody),
       })
       console.log('[webhook] Bling ok:', JSON.stringify(blingRes))
+
+      // Salva o ID do pedido Bling para evitar duplicatas futuras
+      if (blingRes?.data?.id) {
+        await supabase
+          .from('pedidos')
+          .update({ bling_pedido_id: String(blingRes.data.id) })
+          .eq('id', pedidoId!)
+        console.log('[webhook] bling_pedido_id salvo:', blingRes.data.id)
+      }
 
     } catch (blingErr: any) {
       console.error('[webhook] erro Bling:', blingErr.message)
