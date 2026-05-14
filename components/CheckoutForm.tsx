@@ -160,6 +160,7 @@ export default function CheckoutForm({
             cpf,
             freteValor: freteSelected?.preco,
             freteServico: `${freteSelected?.empresa || ''} ${freteSelected?.nome || ''}`.trim(),
+            freteServicoId: freteSelected?.id,
             itens: produtosParaFrete,
             total: Number(kitPreco) + Number(freteSelected?.preco || 0),
           }),

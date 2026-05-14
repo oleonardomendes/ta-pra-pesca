@@ -12,6 +12,7 @@ export async function POST(req: Request) {
     cpf,
     freteValor,
     freteServico,
+    freteServicoId,
     itens,
     total,
   } = body
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
       cpf: cpf || null,
       frete_valor: Number(freteValor) || null,
       frete_servico: freteServico || null,
+      frete_servico_id: freteServicoId ? Number(freteServicoId) : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' })
     .select()
