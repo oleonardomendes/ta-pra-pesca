@@ -20,30 +20,44 @@ export async function GET(req: Request) {
     const produtoId = produtoBling?.id || null
     console.log('[teste-bling] produto encontrado:', produtoId, produtoBling?.nome)
 
-    // 2. Cria contato de teste
-    await delay(300)
-    const contato = await blingFetch('/contatos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nome: 'Cliente Teste Site',
-        tipo: 'F',
-        situacao: 'A',
-        enderecos: [{
-          tipo: 'R',
-          endereco: 'Rua Teste',
-          numero: '123',
-          bairro: 'Centro',
-          municipio: 'São Paulo',
-          uf: 'SP',
-          cep: '01310100',
-          pais: 'Brasil',
-          nomePais: 'Brasil',
-        }],
-      }),
-    })
-    const contatoId = contato?.data?.id
-    console.log('[teste-bling] contato criado:', contatoId)
+    // 2. Busca ou cria contato de teste
+    let contatoId: number | null = null
+
+    try {
+      await delay(300)
+      const busca = await blingFetch('/contatos?pesquisa=Cliente+Teste+Site&limite=5')
+      const encontrado = busca?.data?.find((c: any) => c.nome === 'Cliente Teste Site')
+      if (encontrado) {
+        contatoId = encontrado.id
+        console.log('[teste-bling] contato existente:', contatoId)
+      }
+    } catch {}
+
+    if (!contatoId) {
+      await delay(300)
+      const contato = await blingFetch('/contatos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: 'Cliente Teste Site',
+          tipo: 'F',
+          situacao: 'A',
+          enderecos: [{
+            tipo: 'R',
+            endereco: 'Rua Teste',
+            numero: '123',
+            bairro: 'Centro',
+            municipio: 'São Paulo',
+            uf: 'SP',
+            cep: '01310100',
+            pais: 'Brasil',
+            nomePais: 'Brasil',
+          }],
+        }),
+      })
+      contatoId = contato?.data?.id
+      console.log('[teste-bling] contato criado:', contatoId)
+    }
 
     // 3. Cria pedido com produto real
     const enderecoEntregaData = {
