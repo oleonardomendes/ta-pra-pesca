@@ -299,18 +299,18 @@ export async function POST(req: Request) {
         fretePorConta: 'D',
         frete: Number(pedidoCompleto.frete_valor) || 0,
         volumes: [{ servico: pedidoCompleto.frete_servico || 'Correios' }],
+        enderecoEntrega: enderecoParsed ? {
+          endereco: enderecoParsed.logradouro || '',
+          numero: enderecoParsed.numero || '',
+          complemento: enderecoParsed.complemento || '',
+          bairro: enderecoParsed.bairro || '',
+          municipio: enderecoParsed.cidade || '',
+          uf: enderecoParsed.estado || '',
+          cep: (enderecoParsed.cep || '').replace(/\D/g, ''),
+          pais: 'Brasil',
+          nomePais: 'Brasil',
+        } : undefined,
       },
-      enderecoEntrega: enderecoParsed ? {
-        endereco: enderecoParsed.logradouro || '',
-        numero: enderecoParsed.numero || '',
-        complemento: enderecoParsed.complemento || '',
-        bairro: enderecoParsed.bairro || '',
-        municipio: enderecoParsed.cidade || '',
-        uf: enderecoParsed.estado || '',
-        cep: (enderecoParsed.cep || '').replace(/\D/g, ''),
-        pais: 'Brasil',
-        nomePais: 'Brasil',
-      } : undefined,
       itens: itensPedido.length > 0
         ? itensPedido.map((item: any) => {
             const produtoId = item.id && !/^\d{1,8}$/.test(String(item.id))

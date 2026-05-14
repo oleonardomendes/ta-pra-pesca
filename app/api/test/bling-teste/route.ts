@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const codigo = searchParams.get('codigo') || '81102'
-  const produtoId = Number(searchParams.get('produtoId') || 0) || undefined
   const nome = searchParams.get('nome') || 'Vara de Pesca Enjoylure'
   const valor = Number(searchParams.get('valor') || '129.89')
   const frete = Number(searchParams.get('frete') || '14.00')
@@ -14,7 +13,14 @@ export async function GET(req: Request) {
   const hoje = new Date().toISOString().split('T')[0]
 
   try {
-    // 1. Cria contato de teste
+    // 1. Busca produto no Bling pelo código SKU
+    await delay(300)
+    const produtoRes = await blingFetch(`/produtos?codigo=${codigo}&limite=1`)
+    const produtoBling = produtoRes?.data?.[0]
+    const produtoId = produtoBling?.id || null
+    console.log('[teste-bling] produto encontrado:', produtoId, produtoBling?.nome)
+
+    // 2. Cria contato de teste
     await delay(300)
     const contato = await blingFetch('/contatos', {
       method: 'POST',
@@ -39,7 +45,7 @@ export async function GET(req: Request) {
     const contatoId = contato?.data?.id
     console.log('[teste-bling] contato criado:', contatoId)
 
-    // 2. Cria pedido com produto real
+    // 3. Cria pedido com produto real
     await delay(500)
     const pedido = await blingFetch('/pedidos/vendas', {
       method: 'POST',
@@ -53,20 +59,21 @@ export async function GET(req: Request) {
           fretePorConta: 'D',
           frete: frete,
           volumes: [{ servico: 'Correios SEDEX' }],
-        },
-        enderecoEntrega: {
-          endereco: 'Rua Teste',
-          numero: '123',
-          bairro: 'Centro',
-          municipio: 'São Paulo',
-          uf: 'SP',
-          cep: '01310100',
-          pais: 'Brasil',
-          nomePais: 'Brasil',
+          enderecoEntrega: {
+            endereco: 'Rua das Flores',
+            numero: '100',
+            complemento: '',
+            bairro: 'Centro',
+            municipio: 'São Paulo',
+            uf: 'SP',
+            cep: '01310100',
+            pais: 'Brasil',
+            nomePais: 'Brasil',
+          },
         },
         itens: [{
-          produto: { id: produtoId },
-          descricao: nome,
+          ...(produtoId ? { produto: { id: produtoId } } : {}),
+          descricao: produtoBling?.nome || nome,
           quantidade: 1,
           valor: valor,
           unidade: 'UN',
