@@ -1,26 +1,10 @@
 import { supabase } from './supabase'
 
 const BLING_BASE = 'https://api.bling.com.br/Api/v3'
-const BLING_TOKEN_URL = 'https://api.bling.com.br/Api/v3/oauth/token'
 
-let cachedAccessToken: string | null = null
-let cachedRefreshToken: string | null = null
-
-async function loadTokensFromSupabase(): Promise<{
-  access_token: string
-  refresh_token: string
-} | null> {
-  const { data, error } = await supabase
-    .from('bling_tokens')
-    .select('access_token, refresh_token')
-    .eq('id', 1)
-    .single()
-  if (error) {
-    console.warn('[bling] Supabase loadTokens erro:', error.message)
-    return null
-  }
-  return data
-}
+// Lock global para evitar refresh simultâneo
+let isRefreshing = false
+let refreshPromise: Promise<string> | null = null
 
 export async function saveTokensToSupabase(
   access_token: string,
@@ -37,70 +21,109 @@ export async function saveTokensToSupabase(
   } else {
     console.log('[bling] tokens salvos no Supabase com sucesso')
   }
-  cachedAccessToken = access_token
-  cachedRefreshToken = refresh_token
 }
 
-async function getBlingToken(): Promise<string> {
-  if (cachedAccessToken) return cachedAccessToken
-  const tokens = await loadTokensFromSupabase()
-  if (tokens) {
-    cachedAccessToken = tokens.access_token
-    cachedRefreshToken = tokens.refresh_token
-    return cachedAccessToken
-  }
-  return process.env.BLING_ACCESS_TOKEN ?? ''
-}
+const getValidToken = async (): Promise<string> => {
+  const { data } = await supabase
+    .from('bling_tokens')
+    .select('access_token, refresh_token, updated_at')
+    .eq('id', 1)
+    .single()
 
-async function getRefreshToken(): Promise<string> {
-  if (cachedRefreshToken) return cachedRefreshToken
-  const tokens = await loadTokensFromSupabase()
-  if (tokens) {
-    cachedRefreshToken = tokens.refresh_token
-    return cachedRefreshToken
-  }
-  return process.env.BLING_REFRESH_TOKEN ?? ''
-}
+  if (!data) throw new Error('Tokens Bling não encontrados')
 
-export async function refreshBlingToken(): Promise<string> {
-  const refreshToken = await getRefreshToken()
-  if (!refreshToken) {
-    throw new Error('Refresh token não encontrado — acesse /api/bling/auth para reautorizar')
-  }
+  // Verifica se o token ainda é válido
+  try {
+    const payload = JSON.parse(
+      Buffer.from(data.access_token.split('.')[1], 'base64').toString()
+    )
+    const expiraEm = payload.exp * 1000
+    const agora = Date.now()
+    const margemSeguranca = 5 * 60 * 1000 // 5 minutos
 
-  const credentials = btoa(
-    `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
-  )
+    if (expiraEm - agora > margemSeguranca) {
+      return data.access_token
+    }
+  } catch {}
 
-  const res = await fetch(BLING_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }).toString(),
-  })
-
-  if (!res.ok) {
-    const detail = await res.text()
-    console.error('[bling] ⚠️  REFRESH FALHOU — acesse /api/bling/auth para reautorizar')
-    throw new Error(`Bling refresh falhou (${res.status}): ${detail}`)
+  // Token expirado — verifica se já tem refresh em andamento
+  if (isRefreshing && refreshPromise) {
+    console.log('[bling] aguardando refresh em andamento...')
+    return refreshPromise
   }
 
-  const data = await res.json()
-  await saveTokensToSupabase(data.access_token, data.refresh_token)
-  return data.access_token
+  // Inicia refresh com lock
+  isRefreshing = true
+  refreshPromise = (async () => {
+    try {
+      console.log('[bling] token expirado, renovando...')
+
+      // Relê o token do Supabase (pode ter sido renovado por outra instância)
+      const { data: tokenAtual } = await supabase
+        .from('bling_tokens')
+        .select('access_token, refresh_token, updated_at')
+        .eq('id', 1)
+        .single()
+
+      // Verifica se outra instância já renovou
+      if (tokenAtual) {
+        try {
+          const payload = JSON.parse(
+            Buffer.from(tokenAtual.access_token.split('.')[1], 'base64').toString()
+          )
+          if ((payload.exp * 1000) - Date.now() > 5 * 60 * 1000) {
+            console.log('[bling] token já renovado por outra instância')
+            return tokenAtual.access_token
+          }
+        } catch {}
+      }
+
+      const res = await fetch('https://www.bling.com.br/Api/v3/oauth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${Buffer.from(
+            `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
+          ).toString('base64')}`,
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: tokenAtual?.refresh_token || '',
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.text()
+        console.error('[bling] ⚠️  REFRESH FALHOU — acesse /api/bling/auth para reautorizar')
+        throw new Error(`Bling refresh falhou (${res.status}): ${err}`)
+      }
+
+      const tokens = await res.json()
+
+      await supabase.from('bling_tokens').upsert({
+        id: 1,
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        updated_at: new Date().toISOString(),
+      })
+
+      console.log('[bling] token renovado com sucesso')
+      return tokens.access_token as string
+
+    } finally {
+      isRefreshing = false
+      refreshPromise = null
+    }
+  })()
+
+  return refreshPromise
 }
 
 export async function blingFetch(
   endpoint: string,
   options?: RequestInit
 ): Promise<any> {
-  const token = await getBlingToken()
+  const token = await getValidToken()
 
   const makeRequest = (accessToken: string) =>
     fetch(`${BLING_BASE}${endpoint}`, {
@@ -116,8 +139,10 @@ export async function blingFetch(
   let res = await makeRequest(token)
 
   if (res.status === 401) {
-    console.log('[bling] token expirado, renovando...')
-    const newToken = await refreshBlingToken()
+    // Força refresh ignorando o cache de validade
+    isRefreshing = false
+    refreshPromise = null
+    const newToken = await getValidToken()
     res = await makeRequest(newToken)
   }
 
