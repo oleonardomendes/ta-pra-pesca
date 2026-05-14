@@ -126,10 +126,12 @@ export async function POST(req: Request) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               nome: nomeCliente,
-              tipoPessoa: 'F',
+              tipo: 'F',
+              situacao: 'A',
               numeroDocumento: cpfLimpo || undefined,
               email: data.payer?.email || '',
               enderecos: pedidoCompleto.endereco ? [{
+                tipo: 'R',
                 endereco: pedidoCompleto.endereco.logradouro || '',
                 numero: pedidoCompleto.endereco.numero || '',
                 complemento: pedidoCompleto.endereco.complemento || '',
