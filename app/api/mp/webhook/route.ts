@@ -104,9 +104,15 @@ export async function POST(req: Request) {
       const hoje = new Date().toISOString().split('T')[0]
       const cpfLimpo = pedidoCompleto.cpf?.replace(/\D/g, '') || ''
       const emailPagador = data.payer?.email || ''
+      const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailPagador)
+        && !emailPagador.includes('taprapesca')
+        && !emailPagador.includes('testuser')
+        ? emailPagador
+        : undefined
+      console.log('[webhook] email pagador:', emailPagador, 'válido:', !!emailValido)
       const nomeCliente = data.payer?.first_name
         ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
-        : emailPagador || 'Cliente'
+        : emailValido || 'Cliente'
 
       let contatoId: number | null = null
 
@@ -119,7 +125,7 @@ export async function POST(req: Request) {
             tipo: 'F',
             situacao: 'A',
             numeroDocumento: cpfLimpo || undefined,
-            email: data.payer?.email || '',
+            email: emailValido,
             enderecos: pedidoCompleto.endereco ? [{
               tipo: 'R',
               endereco: pedidoCompleto.endereco.logradouro || '',
