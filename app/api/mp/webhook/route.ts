@@ -317,14 +317,23 @@ export async function POST(req: Request) {
         nomePais: 'Brasil',
       } : undefined,
       itens: itensPedido.length > 0
-        ? itensPedido.map((item: any) => ({
-            codigo: String(item.codigo || ''),
-            descricao: item.nome || 'Produto',
-            quantidade: Number(item.quantidade) || 1,
-            valor: Number(item.valor) || 0,
-            unidade: 'UN',
-            tipo: 'P',
-          }))
+        ? itensPedido.map((item: any) => {
+            const codigoValido = item.codigo
+              && item.codigo !== '123456'
+              && item.codigo.length <= 20
+              && !/^\d{10,}$/.test(item.codigo)
+              ? String(item.codigo)
+              : ''
+
+            return {
+              ...(codigoValido ? { codigo: codigoValido } : {}),
+              descricao: item.nome || 'Produto',
+              quantidade: Number(item.quantidade) || 1,
+              valor: Number(item.valor) || 0,
+              unidade: 'UN',
+              tipo: 'P',
+            }
+          })
         : [{
             descricao: 'Pedido Tá Pra Pesca',
             quantidade: 1,
