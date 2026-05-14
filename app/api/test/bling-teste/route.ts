@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const codigo = searchParams.get('codigo') || '81102'
+  const produtoId = Number(searchParams.get('produtoId') || 0) || undefined
   const nome = searchParams.get('nome') || 'Vara de Pesca Enjoylure'
   const valor = Number(searchParams.get('valor') || '129.89')
   const frete = Number(searchParams.get('frete') || '14.00')
@@ -64,6 +65,7 @@ export async function GET(req: Request) {
           nomePais: 'Brasil',
         },
         itens: [{
+          produto: { id: produtoId },
           descricao: nome,
           quantidade: 1,
           valor: valor,

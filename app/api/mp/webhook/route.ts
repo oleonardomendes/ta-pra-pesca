@@ -312,13 +312,20 @@ export async function POST(req: Request) {
         nomePais: 'Brasil',
       } : undefined,
       itens: itensPedido.length > 0
-        ? itensPedido.map((item: any) => ({
-            descricao: item.nome || 'Produto',
-            quantidade: Number(item.quantidade) || 1,
-            valor: Number(item.valor) || 0,
-            unidade: 'UN',
-            tipo: 'P',
-          }))
+        ? itensPedido.map((item: any) => {
+            const produtoId = item.id && !/^\d{1,8}$/.test(String(item.id))
+              ? Number(item.id)
+              : null
+
+            return {
+              ...(produtoId ? { produto: { id: produtoId } } : {}),
+              descricao: item.nome || 'Produto',
+              quantidade: Number(item.quantidade) || 1,
+              valor: Number(item.valor) || 0,
+              unidade: 'UN',
+              tipo: 'P',
+            }
+          })
         : [{
             descricao: 'Pedido Tá Pra Pesca',
             quantidade: 1,
