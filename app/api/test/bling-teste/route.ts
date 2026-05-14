@@ -64,7 +64,6 @@ export async function GET(req: Request) {
           nomePais: 'Brasil',
         },
         itens: [{
-          codigo: codigo,
           descricao: nome,
           quantidade: 1,
           valor: valor,
