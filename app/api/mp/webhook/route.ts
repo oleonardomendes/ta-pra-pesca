@@ -110,9 +110,27 @@ export async function POST(req: Request) {
         ? emailPagador
         : undefined
       console.log('[webhook] email pagador:', emailPagador, 'válido:', !!emailValido)
-      const nomeCliente = data.payer?.first_name
-        ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
-        : emailValido || 'Cliente'
+
+      // Busca nome real do usuário no Supabase Auth
+      let nomeCliente = 'Cliente'
+      if (pedidoCompleto.user_id) {
+        try {
+          const { data: userData } = await supabase.auth.admin.getUserById(
+            pedidoCompleto.user_id
+          )
+          const nomeAuth = userData?.user?.user_metadata?.nome
+          if (nomeAuth) {
+            nomeCliente = nomeAuth
+            console.log('[webhook] nome do usuário Supabase:', nomeCliente)
+          }
+        } catch {}
+      }
+      if (nomeCliente === 'Cliente') {
+        nomeCliente = data.payer?.first_name
+          ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
+          : 'Cliente'
+      }
+      console.log('[webhook] nome final para Bling:', nomeCliente)
 
       let contatoId: number | null = null
 
@@ -142,17 +160,64 @@ export async function POST(req: Request) {
         })
         contatoId = novoContato?.data?.id || null
         console.log('[webhook] contato criado:', contatoId, nomeCliente)
+
       } catch (e: any) {
         console.error('[webhook] erro ao criar contato:', e.message)
+
+        // CPF já existe — busca contato existente
+        if (cpfLimpo && e.message.includes('CPF')) {
+          try {
+            console.log('[webhook] CPF já existe — buscando contato...')
+            const busca = await blingFetch(
+              `/contatos?pesquisa=${cpfLimpo}&limite=5`
+            )
+            console.log('[webhook] busca CPF:', JSON.stringify(busca?.data))
+
+            const contatoComCpf = busca?.data?.find((c: any) =>
+              (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
+            )
+
+            if (contatoComCpf) {
+              contatoId = contatoComCpf.id
+              console.log('[webhook] contato encontrado por CPF:', contatoId, contatoComCpf.nome)
+
+              if (
+                contatoComCpf.nome === 'Cliente' ||
+                contatoComCpf.nome === 'Consumidor Final'
+              ) {
+                try {
+                  await blingFetch(`/contatos/${contatoId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome: nomeCliente, tipo: 'F', situacao: 'A' }),
+                  })
+                  console.log('[webhook] contato atualizado para:', nomeCliente)
+                } catch {}
+              }
+            }
+          } catch (buscaErr: any) {
+            console.error('[webhook] erro busca CPF:', buscaErr.message)
+          }
+        }
+      }
+
+      // Último fallback: cria sem CPF
+      if (!contatoId) {
+        try {
+          const semCpf = await blingFetch('/contatos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome: nomeCliente, tipo: 'F', situacao: 'A' }),
+          })
+          contatoId = semCpf?.data?.id || null
+          console.log('[webhook] contato criado sem CPF:', contatoId)
+        } catch (e: any) {
+          console.error('[webhook] falha total ao criar contato:', e.message)
+        }
       }
 
       if (!contatoId) {
-        console.error('[webhook] não foi possível criar contato — abortando')
-        return NextResponse.json({ ok: true })
-      }
-
-      if (!contatoId) {
-        console.error('[webhook] não foi possível obter contato Bling — abortando pedido')
+        console.error('[webhook] não foi possível obter contato — abortando')
         return NextResponse.json({ ok: true })
       }
 
