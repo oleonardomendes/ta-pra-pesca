@@ -33,6 +33,9 @@ export async function POST(req: Request) {
     const userId = req.headers.get('x-user-id') || null
     const pedidoId = crypto.randomUUID()
 
+    console.log('[preference] pedidoId gerado:', pedidoId)
+    console.log('[preference] external_reference no body:', { external_reference: pedidoId })
+
     const preference = new Preference(client)
     const result = await preference.create({
       body: {
@@ -61,6 +64,8 @@ export async function POST(req: Request) {
         statement_descriptor: 'TA PRA PESCA',
       }
     })
+
+    console.log('[preference] criada:', result.id, 'external_ref:', result.external_reference)
 
     const checkoutUrl = process.env.NEXT_PUBLIC_MP_ENV === 'test'
       ? result.sandbox_init_point
