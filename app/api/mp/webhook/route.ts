@@ -136,70 +136,80 @@ export async function POST(req: Request) {
 
     console.log('[webhook] nome final:', nomeCliente, '| email:', emailPagador, '| emailValido:', !!emailValido)
 
+    // Função auxiliar para criar contato no Bling
+    const criarContato = async (comEndereco: boolean) => {
+      const contatoBody: any = {
+        nome: nomeCliente,
+        tipo: 'F',
+        situacao: 'A',
+        numeroDocumento: cpfLimpo || undefined,
+        email: emailValido,
+      }
+      if (comEndereco && pedidoCompleto.endereco) {
+        contatoBody.enderecos = [{
+          tipo: 'R',
+          endereco: pedidoCompleto.endereco.logradouro || '',
+          numero: pedidoCompleto.endereco.numero || '',
+          complemento: pedidoCompleto.endereco.complemento || '',
+          bairro: pedidoCompleto.endereco.bairro || '',
+          municipio: pedidoCompleto.endereco.cidade || '',
+          uf: pedidoCompleto.endereco.estado || '',
+          cep: (pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
+          pais: 'Brasil',
+          nomePais: 'Brasil',
+        }]
+      }
+      return blingFetch('/contatos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contatoBody),
+      })
+    }
+
     // Criação de contato com fallbacks
     let contatoId: number | null = null
 
     try {
       await delay(300)
-      const novoContato = await blingFetch('/contatos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: nomeCliente,
-          tipo: 'F',
-          situacao: 'A',
-          numeroDocumento: cpfLimpo || undefined,
-          email: emailValido,
-        }),
-      })
-      contatoId = novoContato?.data?.id || null
-      console.log('[webhook] contato criado:', contatoId, nomeCliente)
+      const resultado = await criarContato(true)
+      contatoId = resultado?.data?.id || null
+      console.log('[webhook] contato criado com endereço:', contatoId)
 
     } catch (e: any) {
       console.error('[webhook] erro criar contato:', e.message)
 
-      // CPF já existe — tenta buscar contato existente
-      if (cpfLimpo && e.message.includes('CPF')) {
+      if (e.message.includes('cidade')) {
+        // Cidade não encontrada no Bling — cria sem endereço
+        console.log('[webhook] cidade inválida, criando sem endereço...')
+        try {
+          await delay(300)
+          const resultado = await criarContato(false)
+          contatoId = resultado?.data?.id || null
+          console.log('[webhook] contato criado sem endereço:', contatoId)
+        } catch (e2: any) {
+          console.error('[webhook] erro criar contato sem endereço:', e2.message)
+        }
+
+      } else if (cpfLimpo && e.message.includes('CPF')) {
+        // CPF já existe — busca contato existente
         try {
           await delay(400)
-          const buscas = await Promise.any([
-            blingFetch(`/contatos?pesquisa=${cpfLimpo}&limite=20`),
-            blingFetch(`/contatos?pesquisa=${pedidoCompleto.cpf}&limite=20`),
-          ]).catch(() => null)
-
-          const lista = (buscas as any)?.data || []
-          console.log('[webhook] busca CPF retornou:', lista.length, 'contatos')
-
+          const busca = await blingFetch(`/contatos?pesquisa=${cpfLimpo}&limite=20`)
+          const lista = busca?.data || []
           const encontrado = lista.find((c: any) =>
             (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
           )
-
           if (encontrado) {
             contatoId = encontrado.id
             console.log('[webhook] contato encontrado por CPF:', contatoId)
+          } else {
+            // Não encontrou por CPF — cria sem CPF
+            await delay(300)
+            const resultado = await criarContato(false)
+            contatoId = resultado?.data?.id || null
+            console.log('[webhook] contato sem CPF criado:', contatoId)
           }
         } catch {}
-      }
-
-      // Fallback: cria sem CPF para não bloquear o pedido
-      if (!contatoId) {
-        try {
-          await delay(400)
-          const semCpf = await blingFetch('/contatos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              nome: nomeCliente,
-              tipo: 'F',
-              situacao: 'A',
-              email: emailValido,
-            }),
-          })
-          contatoId = semCpf?.data?.id || null
-          console.log('[webhook] contato sem CPF criado:', contatoId)
-        } catch (fe: any) {
-          console.error('[webhook] falha total contato:', fe.message)
-        }
       }
     }
 
@@ -241,7 +251,7 @@ export async function POST(req: Request) {
       } : undefined,
       itens: itensPedido.length > 0
         ? itensPedido.map((item: any) => ({
-            codigo: String(item.codigo || item.id || ''),
+            codigo: String(item.codigo || ''),
             descricao: item.nome || 'Produto',
             quantidade: Number(item.quantidade) || 1,
             valor: Number(item.valor) || 0,
@@ -275,8 +285,23 @@ export async function POST(req: Request) {
 
     } catch (bErr: any) {
       console.error('[webhook] erro criar pedido Bling:', bErr.message)
-      // Libera o lock para permitir nova tentativa
-      await supabase.from('pedidos').update({ bling_pedido_id: null }).eq('id', pedidoId!)
+
+      const isDuplicata = bErr.message.includes('"code":3')
+        || bErr.message.includes('"code":50')
+        || bErr.message.includes('idênticas')
+        || bErr.message.includes('mesma situa')
+
+      if (isDuplicata) {
+        console.log('[webhook] pedido já existe no Bling — marcando como processado')
+        await supabase.from('pedidos')
+          .update({ bling_pedido_id: 'duplicata-bling' })
+          .eq('id', pedidoId!)
+      } else {
+        // Erro real — libera o lock para nova tentativa
+        await supabase.from('pedidos')
+          .update({ bling_pedido_id: null })
+          .eq('id', pedidoId!)
+      }
     }
 
     return NextResponse.json({ ok: true })
