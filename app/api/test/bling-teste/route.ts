@@ -59,8 +59,8 @@ export async function GET(req: Request) {
       console.log('[teste-bling] contato criado:', contatoId)
     }
 
-    // 3. Cria pedido com produto real
-    const enderecoEntregaData = {
+    // 3. Atualiza contato com CPF e endereço
+    const enderecoData = {
       endereco: 'Rua das Flores',
       numero: '100',
       complemento: '',
@@ -72,6 +72,28 @@ export async function GET(req: Request) {
       nomePais: 'Brasil',
     }
 
+    try {
+      await delay(300)
+      const putRes = await blingFetch(`/contatos/${contatoId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: 'Cliente Teste Site',
+          tipo: 'F',
+          situacao: 'A',
+          numeroDocumento: '529.982.247-25',
+          enderecos: [{
+            tipo: 'R',
+            ...enderecoData,
+          }],
+        }),
+      })
+      console.log('[teste-bling] PUT contato resultado:', JSON.stringify(putRes))
+    } catch (putErr: any) {
+      console.error('[teste-bling] PUT contato erro:', putErr.message)
+    }
+
+    // 4. Cria pedido com produto real
     await delay(500)
     const pedido = await blingFetch('/pedidos/vendas', {
       method: 'POST',
@@ -81,12 +103,11 @@ export async function GET(req: Request) {
         situacao: { id: 6 },
         contato: { id: contatoId },
         observacoes: `TESTE — ${new Date().toISOString()} — Pedido via site taprapesca.com.br`,
-        enderecoEntrega: enderecoEntregaData,
+        enderecoEntrega: enderecoData,
         transporte: {
           fretePorConta: 'D',
           frete: frete,
           volumes: [{ servico: 'Correios SEDEX' }],
-          enderecoEntrega: enderecoEntregaData,
         },
         itens: [{
           ...(produtoId ? { produto: { id: produtoId } } : {}),
