@@ -48,7 +48,7 @@ export async function GET(req: Request) {
         data: hoje,
         situacao: { id: 6 },
         contato: { id: contatoId },
-        observacoes: `TESTE — Pedido via site taprapesca.com.br`,
+        observacoes: `TESTE — ${new Date().toISOString()} — Pedido via site taprapesca.com.br`,
         transporte: {
           fretePorConta: 'D',
           frete: frete,
