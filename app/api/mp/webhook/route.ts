@@ -170,8 +170,11 @@ export async function POST(req: Request) {
 
       const blingBody = {
         data: hoje,
+        numero: String(paymentId).slice(-6),
+        numeroPedidoCompra: String(paymentId),
         situacao: { id: 6 },
         contato: { id: contatoId },
+        observacoes: `Pedido via site - MP Payment ID: ${paymentId}`,
         transporte: {
           fretePorConta: 'D',
           frete: Number(pedidoCompleto.frete_valor) || 0,
