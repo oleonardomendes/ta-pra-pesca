@@ -136,19 +136,6 @@ export async function POST(req: Request) {
 
     console.log('[webhook] nome final:', nomeCliente, '| email:', emailPagador, '| emailValido:', !!emailValido)
 
-    const enderecosBling = pedidoCompleto.endereco ? [{
-      tipo: 'R',
-      endereco: pedidoCompleto.endereco.logradouro || '',
-      numero: pedidoCompleto.endereco.numero || '',
-      complemento: pedidoCompleto.endereco.complemento || '',
-      bairro: pedidoCompleto.endereco.bairro || '',
-      municipio: pedidoCompleto.endereco.cidade || '',
-      uf: pedidoCompleto.endereco.estado || '',
-      cep: (pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
-      pais: 'Brasil',
-      nomePais: 'Brasil',
-    }] : []
-
     // Criação de contato com fallbacks
     let contatoId: number | null = null
 
@@ -163,7 +150,6 @@ export async function POST(req: Request) {
           situacao: 'A',
           numeroDocumento: cpfLimpo || undefined,
           email: emailValido,
-          enderecos: enderecosBling,
         }),
       })
       contatoId = novoContato?.data?.id || null
@@ -207,7 +193,6 @@ export async function POST(req: Request) {
               tipo: 'F',
               situacao: 'A',
               email: emailValido,
-              enderecos: enderecosBling,
             }),
           })
           contatoId = semCpf?.data?.id || null
@@ -256,6 +241,7 @@ export async function POST(req: Request) {
       } : undefined,
       itens: itensPedido.length > 0
         ? itensPedido.map((item: any) => ({
+            codigo: String(item.codigo || item.id || ''),
             descricao: item.nome || 'Produto',
             quantidade: Number(item.quantidade) || 1,
             valor: Number(item.valor) || 0,

@@ -21,6 +21,7 @@ interface Props {
   onEnderecoComplete: (dados: { endereco: any; cpf: string; frete: any }) => void
   produtosParaFrete: Array<{
     id: string
+    codigo?: string
     nome: string
     peso: number
     altura: number

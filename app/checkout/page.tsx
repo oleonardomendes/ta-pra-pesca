@@ -44,7 +44,7 @@ function CheckoutContent() {
             failure: 'https://taprapesca.com.br',
             pending: `https://taprapesca.com.br/obrigado?id=${id}&nome=${encodeURIComponent(nome)}&preco=${preco}`,
           }}
-          produtosParaFrete={[{ id, nome, valor: preco, quantidade: 1, ...dimensoes }]}
+          produtosParaFrete={[{ id, codigo, nome, valor: preco, quantidade: 1, ...dimensoes }]}
           onEnderecoComplete={(dados) => {
             sessionStorage.setItem('checkout_dados', JSON.stringify(dados))
           }}
