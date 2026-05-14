@@ -136,115 +136,153 @@ export async function POST(req: Request) {
 
     console.log('[webhook] nome final:', nomeCliente, '| email:', emailPagador, '| emailValido:', !!emailValido)
 
-    // Helper para montar array de endereços no formato Bling
-    const montarEndereco = (endereco: any) => {
-      if (!endereco) return []
-      const e = typeof endereco === 'string' ? JSON.parse(endereco) : endereco
-      return [{
-        tipo: 'R',
-        endereco: e.logradouro || '',
-        numero: e.numero || '',
-        complemento: e.complemento || '',
-        bairro: e.bairro || '',
-        municipio: e.cidade || '',
-        uf: e.estado || '',
-        cep: (e.cep || '').replace(/\D/g, ''),
-        pais: 'Brasil',
-        nomePais: 'Brasil',
-      }]
-    }
+    // ============================================
+    // BLOCO DE CONTATO — nunca aborta por CPF
+    // ============================================
 
-    // Função auxiliar para criar contato no Bling
-    const criarContato = async (comEndereco: boolean) => {
-      const contatoBody: any = {
-        nome: nomeCliente,
-        tipo: 'F',
-        situacao: 'A',
-        numeroDocumento: cpfLimpo || undefined,
-        email: emailValido,
-      }
-      if (comEndereco) {
-        contatoBody.enderecos = montarEndereco(pedidoCompleto.endereco)
-      }
-      return blingFetch('/contatos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contatoBody),
-      })
-    }
-
-    // Criação de contato com fallbacks
     let contatoId: number | null = null
 
+    const enderecos = pedidoCompleto.endereco ? [{
+      tipo: 'R',
+      endereco: typeof pedidoCompleto.endereco === 'string'
+        ? JSON.parse(pedidoCompleto.endereco).logradouro
+        : pedidoCompleto.endereco.logradouro || '',
+      numero: typeof pedidoCompleto.endereco === 'string'
+        ? JSON.parse(pedidoCompleto.endereco).numero
+        : pedidoCompleto.endereco.numero || '',
+      complemento: typeof pedidoCompleto.endereco === 'string'
+        ? JSON.parse(pedidoCompleto.endereco).complemento
+        : pedidoCompleto.endereco.complemento || '',
+      bairro: typeof pedidoCompleto.endereco === 'string'
+        ? JSON.parse(pedidoCompleto.endereco).bairro
+        : pedidoCompleto.endereco.bairro || '',
+      municipio: typeof pedidoCompleto.endereco === 'string'
+        ? JSON.parse(pedidoCompleto.endereco).cidade
+        : pedidoCompleto.endereco.cidade || '',
+      uf: typeof pedidoCompleto.endereco === 'string'
+        ? JSON.parse(pedidoCompleto.endereco).estado
+        : pedidoCompleto.endereco.estado || '',
+      cep: (typeof pedidoCompleto.endereco === 'string'
+        ? JSON.parse(pedidoCompleto.endereco).cep
+        : pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
+      pais: 'Brasil',
+      nomePais: 'Brasil',
+    }] : []
+
+    // ETAPA 1: Tenta criar contato completo (com CPF e endereço)
     try {
       await delay(300)
-      const resultado = await criarContato(true)
-      contatoId = resultado?.data?.id || null
-      console.log('[webhook] contato criado com endereço:', contatoId)
-
+      const res = await blingFetch('/contatos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: nomeCliente,
+          tipo: 'F',
+          situacao: 'A',
+          numeroDocumento: cpfLimpo || undefined,
+          email: emailValido,
+          enderecos,
+        }),
+      })
+      contatoId = res?.data?.id || null
+      console.log('[webhook] contato criado com CPF:', contatoId)
     } catch (e: any) {
-      console.error('[webhook] erro criar contato:', e.message)
+      console.log('[webhook] não criou com CPF:', e.message.slice(0, 100))
 
-      if (e.message.includes('cidade')) {
-        // Cidade não encontrada no Bling — cria sem endereço
-        console.log('[webhook] cidade inválida, criando sem endereço...')
+      // ETAPA 2: CPF já existe — busca o contato
+      if (cpfLimpo && e.message.includes('CPF')) {
         try {
           await delay(300)
-          const resultado = await criarContato(false)
-          contatoId = resultado?.data?.id || null
-          console.log('[webhook] contato criado sem endereço:', contatoId)
-        } catch (e2: any) {
-          console.error('[webhook] erro criar contato sem endereço:', e2.message)
-        }
-
-      } else if (cpfLimpo && e.message.includes('CPF')) {
-        // CPF já existe — busca contato existente
-        try {
-          await delay(400)
           const busca = await blingFetch(`/contatos?pesquisa=${cpfLimpo}&limite=20`)
           const lista = busca?.data || []
+          console.log('[webhook] busca CPF retornou:', lista.length, 'contatos')
+
           const encontrado = lista.find((c: any) =>
             (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
           )
+
           if (encontrado) {
             contatoId = encontrado.id
-            console.log('[webhook] contato encontrado por CPF:', contatoId)
+            console.log('[webhook] contato encontrado:', contatoId, encontrado.nome)
 
-            // Atualiza endereço do contato existente
-            if (pedidoCompleto.endereco) {
-              try {
-                await delay(400)
-                await blingFetch(`/contatos/${contatoId}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    nome: nomeCliente,
-                    tipo: 'F',
-                    situacao: 'A',
-                    enderecos: montarEndereco(pedidoCompleto.endereco),
-                  }),
-                })
-                console.log('[webhook] contato atualizado com endereço:', contatoId)
-              } catch (upErr: any) {
-                console.log('[webhook] não foi possível atualizar endereço:', upErr.message)
-              }
+            // Atualiza endereço com os dados do pedido atual
+            try {
+              await delay(300)
+              await blingFetch(`/contatos/${contatoId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  nome: encontrado.nome,
+                  tipo: 'F',
+                  situacao: 'A',
+                  enderecos,
+                }),
+              })
+              console.log('[webhook] endereço atualizado no contato existente')
+            } catch (upErr: any) {
+              console.log('[webhook] não atualizou endereço:', upErr.message.slice(0, 80))
             }
-          } else {
-            // Não encontrou por CPF — cria sem CPF
-            await delay(300)
-            const resultado = await criarContato(false)
-            contatoId = resultado?.data?.id || null
-            console.log('[webhook] contato sem CPF criado:', contatoId)
           }
-        } catch {}
+        } catch (bErr: any) {
+          console.log('[webhook] busca falhou:', bErr.message.slice(0, 80))
+        }
       }
     }
 
+    // ETAPA 3: Se ainda sem contato, cria SEM CPF (nunca bloqueia o pedido)
     if (!contatoId) {
-      await supabase.from('pedidos').update({ bling_pedido_id: null }).eq('id', pedidoId!)
-      console.error('[webhook] não foi possível criar contato — lock liberado')
+      try {
+        await delay(300)
+        const res = await blingFetch('/contatos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: nomeCliente,
+            tipo: 'F',
+            situacao: 'A',
+            email: emailValido,
+            enderecos,
+          }),
+        })
+        contatoId = res?.data?.id || null
+        console.log('[webhook] contato criado sem CPF:', contatoId)
+      } catch (e3: any) {
+        console.log('[webhook] falha sem CPF também:', e3.message.slice(0, 80))
+      }
+    }
+
+    // ETAPA 4: Último recurso — cria contato mínimo sem nada
+    if (!contatoId) {
+      try {
+        await delay(300)
+        const res = await blingFetch('/contatos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: nomeCliente,
+            tipo: 'F',
+            situacao: 'A',
+          }),
+        })
+        contatoId = res?.data?.id || null
+        console.log('[webhook] contato mínimo criado:', contatoId)
+      } catch (e4: any) {
+        console.error('[webhook] falha total no contato:', e4.message.slice(0, 80))
+      }
+    }
+
+    // SE MESMO ASSIM NÃO TEM CONTATO, libera lock e sai
+    if (!contatoId) {
+      await supabase.from('pedidos')
+        .update({ bling_pedido_id: null })
+        .eq('id', pedidoId!)
+      console.error('[webhook] impossível criar contato — pedido não enviado ao Bling')
       return NextResponse.json({ ok: true })
     }
+
+    // ============================================
+    // A PARTIR DAQUI: SEMPRE CRIA O PEDIDO
+    // ============================================
 
     // Cria o pedido no Bling
     const itensPedido = Array.isArray(pedidoCompleto.itens)
