@@ -181,6 +181,31 @@ async function processarPedido(body: any) {
         if (encontrado) {
           contatoId = encontrado.id
           console.log('[webhook] contato existente encontrado:', contatoId, encontrado.nome)
+
+          // Atualiza endereço com campos planos
+          try {
+            await delay(300)
+            await blingFetch(`/contatos/${contatoId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nome: encontrado.nome,
+                tipo: 'F',
+                situacao: 'A',
+                endereco: enderecoParsed?.logradouro || '',
+                numero: enderecoParsed?.numero || '',
+                complemento: enderecoParsed?.complemento || '',
+                bairro: enderecoParsed?.bairro || '',
+                municipio: enderecoParsed?.cidade || '',
+                uf: enderecoParsed?.estado || '',
+                cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                pais: 'Brasil',
+              }),
+            })
+            console.log('[webhook] contato atualizado com endereço plano')
+          } catch (upErr: any) {
+            console.log('[webhook] não atualizou endereço:', upErr.message.slice(0, 80))
+          }
         }
       } catch (e: any) {
         console.log('[webhook] erro na busca CPF:', e.message)
@@ -200,6 +225,14 @@ async function processarPedido(body: any) {
             situacao: 'A',
             numeroDocumento: cpfLimpo || undefined,
             email: emailValido,
+            endereco: enderecoParsed?.logradouro || '',
+            numero: enderecoParsed?.numero || '',
+            complemento: enderecoParsed?.complemento || '',
+            bairro: enderecoParsed?.bairro || '',
+            municipio: enderecoParsed?.cidade || '',
+            uf: enderecoParsed?.estado || '',
+            cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+            pais: 'Brasil',
           }),
         })
         contatoId = res?.data?.id || null
@@ -242,6 +275,14 @@ async function processarPedido(body: any) {
             tipo: 'F',
             situacao: 'A',
             email: emailValido,
+            endereco: enderecoParsed?.logradouro || '',
+            numero: enderecoParsed?.numero || '',
+            complemento: enderecoParsed?.complemento || '',
+            bairro: enderecoParsed?.bairro || '',
+            municipio: enderecoParsed?.cidade || '',
+            uf: enderecoParsed?.estado || '',
+            cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+            pais: 'Brasil',
           }),
         })
         contatoId = res?.data?.id || null

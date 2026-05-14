@@ -62,6 +62,14 @@ export async function GET(req: Request) {
             tipo: 'F',
             situacao: 'A',
             numeroDocumento: cpfTesteFormatado,
+            endereco: 'Rua das Flores',
+            numero: '100',
+            complemento: '',
+            bairro: 'Centro',
+            municipio: 'São Paulo',
+            uf: 'SP',
+            cep: '01310100',
+            pais: 'Brasil',
           }),
         })
         contatoId = contato?.data?.id
