@@ -96,6 +96,65 @@ export async function POST(req: Request) {
     // Envia ao Bling
     try {
       const hoje = new Date().toISOString().split('T')[0]
+      const cpfLimpo = pedidoCompleto.cpf?.replace(/\D/g, '') || ''
+      const nomeCliente = data.payer?.first_name
+        ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
+        : data.payer?.email || 'Cliente'
+
+      // 1. Busca contato existente no Bling pelo CPF
+      let contatoId: number | null = null
+
+      if (cpfLimpo) {
+        try {
+          const buscaContato = await blingFetch(
+            `/contatos?documento=${cpfLimpo}&limite=1`
+          )
+          if (buscaContato?.data?.length > 0) {
+            contatoId = buscaContato.data[0].id
+            console.log('[webhook] contato encontrado no Bling:', contatoId)
+          }
+        } catch {
+          console.log('[webhook] contato não encontrado, criando...')
+        }
+      }
+
+      // 2. Se não encontrou, cria o contato
+      if (!contatoId) {
+        try {
+          const novoContato = await blingFetch('/contatos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nome: nomeCliente,
+              tipoPessoa: 'F',
+              numeroDocumento: cpfLimpo || undefined,
+              email: data.payer?.email || '',
+              enderecos: pedidoCompleto.endereco ? [{
+                endereco: pedidoCompleto.endereco.logradouro || '',
+                numero: pedidoCompleto.endereco.numero || '',
+                complemento: pedidoCompleto.endereco.complemento || '',
+                bairro: pedidoCompleto.endereco.bairro || '',
+                municipio: pedidoCompleto.endereco.cidade || '',
+                uf: pedidoCompleto.endereco.estado || '',
+                cep: (pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
+                pais: 'Brasil',
+                nomePais: 'Brasil',
+              }] : [],
+            }),
+          })
+          contatoId = novoContato?.data?.id || null
+          console.log('[webhook] contato criado no Bling:', contatoId)
+        } catch (e: any) {
+          console.error('[webhook] erro ao criar contato Bling:', e.message)
+        }
+      }
+
+      if (!contatoId) {
+        console.error('[webhook] não foi possível obter contato Bling — abortando pedido')
+        return NextResponse.json({ ok: true })
+      }
+
+      // 3. Cria o pedido no Bling com o contato encontrado/criado
       const itensPedido = Array.isArray(pedidoCompleto.itens)
         ? pedidoCompleto.itens
         : JSON.parse(typeof pedidoCompleto.itens === 'string'
@@ -104,14 +163,7 @@ export async function POST(req: Request) {
       const blingBody = {
         data: hoje,
         situacao: { id: 6 },
-        contato: {
-          nome: data.payer?.first_name
-            ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
-            : data.payer?.email || 'Cliente',
-          email: data.payer?.email || '',
-          tipoPessoa: 'F',
-          numeroDocumento: pedidoCompleto.cpf?.replace(/\D/g, '') || '',
-        },
+        contato: { id: contatoId },
         transporte: {
           fretePorConta: 'D',
           frete: Number(pedidoCompleto.frete_valor) || 0,
@@ -141,8 +193,7 @@ export async function POST(req: Request) {
           : [{
               descricao: 'Pedido Tá Pra Pesca',
               quantidade: 1,
-              valor: Math.max(
-                0,
+              valor: Math.max(0,
                 Number(pedidoCompleto.total) - Number(pedidoCompleto.frete_valor || 0)
               ),
               unidade: 'UN',
