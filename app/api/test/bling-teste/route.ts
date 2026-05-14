@@ -21,45 +21,56 @@ export async function GET(req: Request) {
     console.log('[teste-bling] produto encontrado:', produtoId, produtoBling?.nome)
 
     // 2. Busca ou cria contato de teste
+    const cpfTeste = '52998224725'
+    const cpfTesteFormatado = '529.982.247-25'
     let contatoId: number | null = null
 
+    // ETAPA 1: Busca por CPF primeiro
     try {
       await delay(300)
-      const busca = await blingFetch('/contatos?pesquisa=Cliente+Teste+Site&limite=5')
-      const encontrado = busca?.data?.find((c: any) => c.nome === 'Cliente Teste Site')
+      const [buscaFormatado, buscaSemFormato] = await Promise.allSettled([
+        blingFetch(`/contatos?pesquisa=${encodeURIComponent(cpfTesteFormatado)}&limite=10`),
+        blingFetch(`/contatos?pesquisa=${cpfTeste}&limite=10`),
+      ])
+
+      const resultados = [
+        ...(buscaFormatado.status === 'fulfilled' ? buscaFormatado.value?.data || [] : []),
+        ...(buscaSemFormato.status === 'fulfilled' ? buscaSemFormato.value?.data || [] : []),
+      ]
+
+      const encontrado = resultados.find((c: any) =>
+        (c.numeroDocumento || '').replace(/\D/g, '') === cpfTeste
+      )
+
       if (encontrado) {
         contatoId = encontrado.id
-        console.log('[teste-bling] contato existente:', contatoId)
+        console.log('[teste-bling] contato existente encontrado:', contatoId, encontrado.nome)
       }
-    } catch {}
-
-    if (!contatoId) {
-      await delay(300)
-      const contato = await blingFetch('/contatos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: 'Cliente Teste Site',
-          tipo: 'F',
-          situacao: 'A',
-          enderecos: [{
-            tipo: 'R',
-            endereco: 'Rua Teste',
-            numero: '123',
-            bairro: 'Centro',
-            municipio: 'São Paulo',
-            uf: 'SP',
-            cep: '01310100',
-            pais: 'Brasil',
-            nomePais: 'Brasil',
-          }],
-        }),
-      })
-      contatoId = contato?.data?.id
-      console.log('[teste-bling] contato criado:', contatoId)
+    } catch (e: any) {
+      console.log('[teste-bling] erro na busca CPF:', e.message)
     }
 
-    // 3. Atualiza contato com CPF e endereço
+    // ETAPA 2: Só cria se não encontrou
+    if (!contatoId) {
+      try {
+        await delay(300)
+        const contato = await blingFetch('/contatos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: 'Cliente Teste Site',
+            tipo: 'F',
+            situacao: 'A',
+            numeroDocumento: cpfTesteFormatado,
+          }),
+        })
+        contatoId = contato?.data?.id
+        console.log('[teste-bling] contato criado:', contatoId)
+      } catch (e: any) {
+        console.log('[teste-bling] erro criar contato:', e.message)
+      }
+    }
+
     const enderecoData = {
       endereco: 'Rua das Flores',
       numero: '100',
@@ -70,35 +81,6 @@ export async function GET(req: Request) {
       cep: '01310-100',
       pais: 'Brasil',
       nomePais: 'Brasil',
-    }
-
-    try {
-      await delay(300)
-      const putRes = await blingFetch(`/contatos/${contatoId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: 'Cliente Teste Site',
-          tipo: 'F',
-          situacao: 'A',
-          numeroDocumento: '529.982.247-25',
-          enderecos: [{
-            tipo: 'R',
-            logradouro: 'Rua das Flores',
-            numero: '100',
-            complemento: '',
-            bairro: 'Centro',
-            municipio: 'São Paulo',
-            uf: 'SP',
-            cep: '01310100',
-            pais: 'Brasil',
-            nomePais: 'Brasil',
-          }],
-        }),
-      })
-      console.log('[teste-bling] PUT contato resultado:', JSON.stringify(putRes))
-    } catch (putErr: any) {
-      console.error('[teste-bling] PUT contato erro:', putErr.message)
     }
 
     // 4. Cria pedido com produto real
