@@ -136,35 +136,30 @@ export async function POST(req: Request) {
 
     console.log('[webhook] nome final:', nomeCliente, '| email:', emailPagador, '| emailValido:', !!emailValido)
 
+    // Parse do endereço (vem como string do Supabase)
+    const enderecoParsed = pedidoCompleto.endereco
+      ? (typeof pedidoCompleto.endereco === 'string'
+          ? JSON.parse(pedidoCompleto.endereco)
+          : pedidoCompleto.endereco)
+      : null
+
+    console.log('[webhook] endereco parsed:', JSON.stringify(enderecoParsed))
+
     // ============================================
     // BLOCO DE CONTATO — nunca aborta por CPF
     // ============================================
 
     let contatoId: number | null = null
 
-    const enderecos = pedidoCompleto.endereco ? [{
+    const enderecos = enderecoParsed ? [{
       tipo: 'R',
-      endereco: typeof pedidoCompleto.endereco === 'string'
-        ? JSON.parse(pedidoCompleto.endereco).logradouro
-        : pedidoCompleto.endereco.logradouro || '',
-      numero: typeof pedidoCompleto.endereco === 'string'
-        ? JSON.parse(pedidoCompleto.endereco).numero
-        : pedidoCompleto.endereco.numero || '',
-      complemento: typeof pedidoCompleto.endereco === 'string'
-        ? JSON.parse(pedidoCompleto.endereco).complemento
-        : pedidoCompleto.endereco.complemento || '',
-      bairro: typeof pedidoCompleto.endereco === 'string'
-        ? JSON.parse(pedidoCompleto.endereco).bairro
-        : pedidoCompleto.endereco.bairro || '',
-      municipio: typeof pedidoCompleto.endereco === 'string'
-        ? JSON.parse(pedidoCompleto.endereco).cidade
-        : pedidoCompleto.endereco.cidade || '',
-      uf: typeof pedidoCompleto.endereco === 'string'
-        ? JSON.parse(pedidoCompleto.endereco).estado
-        : pedidoCompleto.endereco.estado || '',
-      cep: (typeof pedidoCompleto.endereco === 'string'
-        ? JSON.parse(pedidoCompleto.endereco).cep
-        : pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
+      endereco: enderecoParsed.logradouro || '',
+      numero: enderecoParsed.numero || '',
+      complemento: enderecoParsed.complemento || '',
+      bairro: enderecoParsed.bairro || '',
+      municipio: enderecoParsed.cidade || '',
+      uf: enderecoParsed.estado || '',
+      cep: (enderecoParsed.cep || '').replace(/\D/g, ''),
       pais: 'Brasil',
       nomePais: 'Brasil',
     }] : []
@@ -305,14 +300,14 @@ export async function POST(req: Request) {
         frete: Number(pedidoCompleto.frete_valor) || 0,
         volumes: [{ servico: pedidoCompleto.frete_servico || 'Correios' }],
       },
-      enderecoEntrega: pedidoCompleto.endereco ? {
-        endereco: pedidoCompleto.endereco.logradouro || '',
-        numero: pedidoCompleto.endereco.numero || '',
-        complemento: pedidoCompleto.endereco.complemento || '',
-        bairro: pedidoCompleto.endereco.bairro || '',
-        municipio: pedidoCompleto.endereco.cidade || '',
-        uf: pedidoCompleto.endereco.estado || '',
-        cep: (pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
+      enderecoEntrega: enderecoParsed ? {
+        endereco: enderecoParsed.logradouro || '',
+        numero: enderecoParsed.numero || '',
+        complemento: enderecoParsed.complemento || '',
+        bairro: enderecoParsed.bairro || '',
+        municipio: enderecoParsed.cidade || '',
+        uf: enderecoParsed.estado || '',
+        cep: (enderecoParsed.cep || '').replace(/\D/g, ''),
         pais: 'Brasil',
         nomePais: 'Brasil',
       } : undefined,
