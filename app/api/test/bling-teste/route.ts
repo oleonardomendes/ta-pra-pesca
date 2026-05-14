@@ -84,7 +84,15 @@ export async function GET(req: Request) {
           numeroDocumento: '529.982.247-25',
           enderecos: [{
             tipo: 'R',
-            ...enderecoData,
+            logradouro: 'Rua das Flores',
+            numero: '100',
+            complemento: '',
+            bairro: 'Centro',
+            municipio: 'São Paulo',
+            uf: 'SP',
+            cep: '01310100',
+            pais: 'Brasil',
+            nomePais: 'Brasil',
           }],
         }),
       })

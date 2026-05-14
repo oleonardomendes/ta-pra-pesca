@@ -126,5 +126,13 @@ export async function blingFetch(
     throw new Error(`Bling API error (${res.status}): ${detail}`)
   }
 
-  return res.json()
+  const text = await res.text()
+  if (!text || text.trim() === '') {
+    return { ok: true }
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    return { ok: true, raw: text }
+  }
 }
