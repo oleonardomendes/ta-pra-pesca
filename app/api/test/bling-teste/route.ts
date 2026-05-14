@@ -113,18 +113,6 @@ export async function GET(req: Request) {
       }
     }
 
-    const enderecoData = {
-      endereco: 'Rua das Flores',
-      numero: '100',
-      complemento: '',
-      bairro: 'Centro',
-      municipio: 'São Paulo',
-      uf: 'SP',
-      cep: '01310-100',
-      pais: 'Brasil',
-      nomePais: 'Brasil',
-    }
-
     // 4. Cria pedido com produto real
     await delay(500)
     const pedido = await blingFetch('/pedidos/vendas', {
@@ -135,19 +123,29 @@ export async function GET(req: Request) {
         situacao: { id: 6 },
         contato: { id: contatoId },
         observacoes: `TESTE — ${new Date().toISOString()} — Pedido via site taprapesca.com.br`,
-        enderecoEntrega: enderecoData,
         transporte: {
           fretePorConta: 'D',
           frete: frete,
-          volumes: [{ servico: 'Correios SEDEX' }],
+          volumes: [{ id: 1, servico: 'Correios SEDEX' }],
+          etiqueta: {
+            nome: 'Cliente Teste Site',
+            endereco: 'Rua das Flores',
+            numero: '100',
+            complemento: '',
+            bairro: 'Centro',
+            municipio: 'São Paulo',
+            uf: 'SP',
+            cep: '01310100',
+            nomePais: 'Brasil',
+          },
         },
         itens: [{
+          id: 1,
           ...(produtoId ? { produto: { id: produtoId } } : {}),
           descricao: produtoBling?.nome || nome,
           quantidade: 1,
           valor: valor,
           unidade: 'UN',
-          tipo: 'P',
         }],
       }),
     })

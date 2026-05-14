@@ -328,22 +328,12 @@ async function processarPedido(body: any) {
       situacao: { id: 6 },
       contato: { id: contatoId },
       observacoes: `Pedido via site taprapesca.com.br | MP: ${paymentId}`,
-      enderecoEntrega: enderecoParsed ? {
-        endereco: enderecoParsed.logradouro || '',
-        numero: enderecoParsed.numero || '',
-        complemento: enderecoParsed.complemento || '',
-        bairro: enderecoParsed.bairro || '',
-        municipio: enderecoParsed.cidade || '',
-        uf: enderecoParsed.estado || '',
-        cep: (enderecoParsed.cep || '').replace(/\D/g, ''),
-        pais: 'Brasil',
-        nomePais: 'Brasil',
-      } : undefined,
       transporte: {
         fretePorConta: 'D',
         frete: Number(pedidoCompleto.frete_valor) || 0,
-        volumes: [{ servico: pedidoCompleto.frete_servico || 'Correios' }],
-        enderecoEntrega: enderecoParsed ? {
+        volumes: [{ id: 1, servico: pedidoCompleto.frete_servico || 'Correios' }],
+        etiqueta: enderecoParsed ? {
+          nome: nomeCliente,
           endereco: enderecoParsed.logradouro || '',
           numero: enderecoParsed.numero || '',
           complemento: enderecoParsed.complemento || '',
@@ -351,31 +341,30 @@ async function processarPedido(body: any) {
           municipio: enderecoParsed.cidade || '',
           uf: enderecoParsed.estado || '',
           cep: (enderecoParsed.cep || '').replace(/\D/g, ''),
-          pais: 'Brasil',
           nomePais: 'Brasil',
         } : undefined,
       },
       itens: itensPedido.length > 0
-        ? itensPedido.map((item: any) => {
-            const produtoId = item.id && !/^\d{1,8}$/.test(String(item.id))
+        ? itensPedido.map((item: any, index: number) => {
+            const produtoId = item.id && String(item.id).length >= 10
               ? Number(item.id)
               : null
 
             return {
+              id: index + 1,
               ...(produtoId ? { produto: { id: produtoId } } : {}),
               descricao: item.nome || 'Produto',
               quantidade: Number(item.quantidade) || 1,
               valor: Number(item.valor) || 0,
               unidade: 'UN',
-              tipo: 'P',
             }
           })
         : [{
+            id: 1,
             descricao: 'Pedido Tá Pra Pesca',
             quantidade: 1,
             valor: Math.max(0, Number(pedidoCompleto.total) - Number(pedidoCompleto.frete_valor || 0)),
             unidade: 'UN',
-            tipo: 'P',
           }],
     }
 
