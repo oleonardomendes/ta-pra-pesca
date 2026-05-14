@@ -322,7 +322,7 @@ export async function POST(req: Request) {
 
             return {
               ...(codigoValido ? { codigo: codigoValido } : {}),
-              descricao: item.nome || 'Produto',
+              descricao: item.nome || 'Produto', // sempre obrigatório
               quantidade: Number(item.quantidade) || 1,
               valor: Number(item.valor) || 0,
               unidade: 'UN',
