@@ -46,6 +46,18 @@ export async function GET(req: Request) {
     console.log('[teste-bling] contato criado:', contatoId)
 
     // 3. Cria pedido com produto real
+    const enderecoEntregaData = {
+      endereco: 'Rua das Flores',
+      numero: '100',
+      complemento: '',
+      bairro: 'Centro',
+      municipio: 'São Paulo',
+      uf: 'SP',
+      cep: '01310-100',
+      pais: 'Brasil',
+      nomePais: 'Brasil',
+    }
+
     await delay(500)
     const pedido = await blingFetch('/pedidos/vendas', {
       method: 'POST',
@@ -55,21 +67,12 @@ export async function GET(req: Request) {
         situacao: { id: 6 },
         contato: { id: contatoId },
         observacoes: `TESTE — ${new Date().toISOString()} — Pedido via site taprapesca.com.br`,
+        enderecoEntrega: enderecoEntregaData,
         transporte: {
           fretePorConta: 'D',
           frete: frete,
           volumes: [{ servico: 'Correios SEDEX' }],
-          enderecoEntrega: {
-            endereco: 'Rua das Flores',
-            numero: '100',
-            complemento: '',
-            bairro: 'Centro',
-            municipio: 'São Paulo',
-            uf: 'SP',
-            cep: '01310100',
-            pais: 'Brasil',
-            nomePais: 'Brasil',
-          },
+          enderecoEntrega: enderecoEntregaData,
         },
         itens: [{
           ...(produtoId ? { produto: { id: produtoId } } : {}),

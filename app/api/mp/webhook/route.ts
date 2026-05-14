@@ -295,6 +295,17 @@ export async function POST(req: Request) {
       situacao: { id: 6 },
       contato: { id: contatoId },
       observacoes: `Pedido via site taprapesca.com.br | MP: ${paymentId}`,
+      enderecoEntrega: enderecoParsed ? {
+        endereco: enderecoParsed.logradouro || '',
+        numero: enderecoParsed.numero || '',
+        complemento: enderecoParsed.complemento || '',
+        bairro: enderecoParsed.bairro || '',
+        municipio: enderecoParsed.cidade || '',
+        uf: enderecoParsed.estado || '',
+        cep: (enderecoParsed.cep || '').replace(/\D/g, ''),
+        pais: 'Brasil',
+        nomePais: 'Brasil',
+      } : undefined,
       transporte: {
         fretePorConta: 'D',
         frete: Number(pedidoCompleto.frete_valor) || 0,
