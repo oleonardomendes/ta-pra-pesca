@@ -81,7 +81,7 @@ export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
           <div className="dest-scroll">
             {destaques.map(produto => {
               const imgSrc = produto.imagens?.[0] || produto.imagemURL
-              const checkoutHref = `/checkout?id=${produto.id}&nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}`
+              const checkoutHref = `/checkout?id=${produto.id}&codigo=${encodeURIComponent(produto.codigo)}&nome=${encodeURIComponent(produto.nome)}&preco=${produto.preco}`
               return (
                 <article key={produto.id} className="dest-card">
                   <Link href={`/produto/${produto.codigo}`} className="dest-img-wrapper">

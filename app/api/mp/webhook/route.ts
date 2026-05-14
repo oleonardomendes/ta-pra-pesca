@@ -136,6 +136,24 @@ export async function POST(req: Request) {
 
     console.log('[webhook] nome final:', nomeCliente, '| email:', emailPagador, '| emailValido:', !!emailValido)
 
+    // Helper para montar array de endereços no formato Bling
+    const montarEndereco = (endereco: any) => {
+      if (!endereco) return []
+      const e = typeof endereco === 'string' ? JSON.parse(endereco) : endereco
+      return [{
+        tipo: 'R',
+        endereco: e.logradouro || '',
+        numero: e.numero || '',
+        complemento: e.complemento || '',
+        bairro: e.bairro || '',
+        municipio: e.cidade || '',
+        uf: e.estado || '',
+        cep: (e.cep || '').replace(/\D/g, ''),
+        pais: 'Brasil',
+        nomePais: 'Brasil',
+      }]
+    }
+
     // Função auxiliar para criar contato no Bling
     const criarContato = async (comEndereco: boolean) => {
       const contatoBody: any = {
@@ -145,19 +163,8 @@ export async function POST(req: Request) {
         numeroDocumento: cpfLimpo || undefined,
         email: emailValido,
       }
-      if (comEndereco && pedidoCompleto.endereco) {
-        contatoBody.enderecos = [{
-          tipo: 'R',
-          endereco: pedidoCompleto.endereco.logradouro || '',
-          numero: pedidoCompleto.endereco.numero || '',
-          complemento: pedidoCompleto.endereco.complemento || '',
-          bairro: pedidoCompleto.endereco.bairro || '',
-          municipio: pedidoCompleto.endereco.cidade || '',
-          uf: pedidoCompleto.endereco.estado || '',
-          cep: (pedidoCompleto.endereco.cep || '').replace(/\D/g, ''),
-          pais: 'Brasil',
-          nomePais: 'Brasil',
-        }]
+      if (comEndereco) {
+        contatoBody.enderecos = montarEndereco(pedidoCompleto.endereco)
       }
       return blingFetch('/contatos', {
         method: 'POST',
@@ -202,6 +209,26 @@ export async function POST(req: Request) {
           if (encontrado) {
             contatoId = encontrado.id
             console.log('[webhook] contato encontrado por CPF:', contatoId)
+
+            // Atualiza endereço do contato existente
+            if (pedidoCompleto.endereco) {
+              try {
+                await delay(400)
+                await blingFetch(`/contatos/${contatoId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    nome: nomeCliente,
+                    tipo: 'F',
+                    situacao: 'A',
+                    enderecos: montarEndereco(pedidoCompleto.endereco),
+                  }),
+                })
+                console.log('[webhook] contato atualizado com endereço:', contatoId)
+              } catch (upErr: any) {
+                console.log('[webhook] não foi possível atualizar endereço:', upErr.message)
+              }
+            }
           } else {
             // Não encontrou por CPF — cria sem CPF
             await delay(300)
@@ -223,6 +250,8 @@ export async function POST(req: Request) {
     const itensPedido = Array.isArray(pedidoCompleto.itens)
       ? pedidoCompleto.itens
       : JSON.parse(typeof pedidoCompleto.itens === 'string' ? pedidoCompleto.itens : '[]')
+
+    console.log('[webhook] itens do pedido:', JSON.stringify(itensPedido))
 
     const hoje = new Date().toISOString().split('T')[0]
 

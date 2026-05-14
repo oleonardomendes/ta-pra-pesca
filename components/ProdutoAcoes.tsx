@@ -14,11 +14,11 @@ interface Props {
   codigo: string
 }
 
-export default function ProdutoAcoes({ id, nome, preco, imagemURL }: Props) {
+export default function ProdutoAcoes({ id, nome, preco, imagemURL, codigo }: Props) {
   const { addItem } = useCart()
 
   const waHref = `https://wa.me/${WA}?text=${encodeURIComponent(`Olá! Tenho interesse: ${nome}`)}`
-  const checkoutHref = `/checkout?id=${id}&nome=${encodeURIComponent(nome)}&preco=${preco}`
+  const checkoutHref = `/checkout?id=${id}&codigo=${encodeURIComponent(codigo)}&nome=${encodeURIComponent(nome)}&preco=${preco}`
 
   return (
     <>

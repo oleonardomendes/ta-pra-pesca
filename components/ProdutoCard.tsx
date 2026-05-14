@@ -35,7 +35,7 @@ export default function ProdutoCard({
 
   const imgs = imagens.length > 0 ? imagens : [imagemURL].filter(Boolean)
   const temMultiplas = imgs.length > 1
-  const checkoutHref = `/checkout?id=${id}&nome=${encodeURIComponent(nome)}&preco=${preco}`
+  const checkoutHref = `/checkout?id=${id}&codigo=${encodeURIComponent(codigo)}&nome=${encodeURIComponent(nome)}&preco=${preco}`
   const imgAtual = imgs[imgIndex] || ''
   const produtoHref = codigo ? `/produto/${codigo}` : null
 
