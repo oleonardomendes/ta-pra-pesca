@@ -414,56 +414,56 @@ export async function POST(req: Request) {
       try {
         await delay(500)
 
-        console.log('[webhook] ME from:', {
-          address: process.env.STORE_ADDRESS,
-          city: process.env.STORE_CITY,
-          phone: process.env.STORE_PHONE,
-          postal_code: process.env.MELHOR_ENVIO_ORIGIN_CEP,
-        })
+        const meBody = {
+          service: Number(pedidoCompleto.frete_servico_id),
+          from: {
+            name: 'Tá Pra Pesca',
+            phone: process.env.STORE_PHONE,
+            postal_code: process.env.MELHOR_ENVIO_ORIGIN_CEP?.replace(/\D/g, ''),
+            address: process.env.STORE_ADDRESS,
+            city: process.env.STORE_CITY,
+          },
+          to: {
+            name: nomeCliente,
+            postal_code: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+            address: enderecoParsed?.logradouro || '',
+            number: enderecoParsed?.numero || '',
+            complement: enderecoParsed?.complemento || '',
+            district: enderecoParsed?.bairro || '',
+            city: enderecoParsed?.cidade || '',
+            state_abbr: enderecoParsed?.estado || '',
+            document: cpfLimpo || '',
+            email: emailValido || '',
+          },
+          products: itensPedido.map((item: any) => ({
+            name: item.nome,
+            quantity: Number(item.quantidade) || 1,
+            unitary_value: Number(item.valor) || 0,
+            weight: Number(item.peso) || 0.5,
+          })),
+          volumes: itensPedido.map((item: any) => ({
+            height: Number(item.altura) || 15,
+            width: Number(item.largura) || 15,
+            length: Number(item.comprimento) || 30,
+            weight: Number(item.peso) || 0.5,
+          })),
+          options: {
+            insurance_value: Number(pedidoCompleto.total) || 0,
+            receipt: false,
+            own_hand: false,
+            tags: [{
+              tag: pedidoCompleto.id,
+              url: `https://taprapesca.com.br/admin/pedidos/${pedidoCompleto.id}`,
+            }],
+          },
+        }
+
+        console.log('[webhook] ME body completo:', JSON.stringify(meBody))
 
         const meCarrinho = await melhorEnvioFetch('/me/cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            service: Number(pedidoCompleto.frete_servico_id),
-            from: {
-              name: 'Tá Pra Pesca',
-              postal_code: process.env.MELHOR_ENVIO_ORIGIN_CEP?.replace(/\D/g, ''),
-            },
-            to: {
-              name: nomeCliente,
-              postal_code: (enderecoParsed?.cep || '').replace(/\D/g, ''),
-              address: enderecoParsed?.logradouro || '',
-              number: enderecoParsed?.numero || '',
-              complement: enderecoParsed?.complemento || '',
-              district: enderecoParsed?.bairro || '',
-              city: enderecoParsed?.cidade || '',
-              state_abbr: enderecoParsed?.estado || '',
-              document: cpfLimpo || '',
-              email: emailValido || '',
-            },
-            products: itensPedido.map((item: any) => ({
-              name: item.nome,
-              quantity: Number(item.quantidade) || 1,
-              unitary_value: Number(item.valor) || 0,
-              weight: Number(item.peso) || 0.5,
-            })),
-            volumes: itensPedido.map((item: any) => ({
-              height: Number(item.altura) || 15,
-              width: Number(item.largura) || 15,
-              length: Number(item.comprimento) || 30,
-              weight: Number(item.peso) || 0.5,
-            })),
-            options: {
-              insurance_value: Number(pedidoCompleto.total) || 0,
-              receipt: false,
-              own_hand: false,
-              tags: [{
-                tag: pedidoCompleto.id,
-                url: `https://taprapesca.com.br/admin/pedidos/${pedidoCompleto.id}`,
-              }],
-            },
-          }),
+          body: JSON.stringify(meBody),
         })
 
         const meCarrinhoId = meCarrinho?.id
