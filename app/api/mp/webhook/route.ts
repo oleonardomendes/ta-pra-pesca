@@ -153,12 +153,19 @@ export async function POST(req: Request) {
     if (cpfLimpo) {
       try {
         await delay(300)
-        // Usa o parâmetro correto: numeroDocumento
-        const busca = await blingFetch(
-          `/contatos?numeroDocumento=${cpfLimpo}&limite=5`
-        )
-        const lista = busca?.data || []
-        console.log('[webhook] busca numeroDocumento retornou:', lista.length)
+        // Tenta encontrar com diferentes criterios (1=ativo, 2=excluido, 3=inativo, 4=todos)
+        let lista: any[] = []
+
+        for (const criterio of [1, 2, 3, 4]) {
+          if (lista.length > 0) break
+          try {
+            const r = await blingFetch(
+              `/contatos?numeroDocumento=${cpfLimpo}&criterio=${criterio}&limite=5`
+            )
+            lista = r?.data || []
+            console.log('[webhook] busca criterio', criterio, '->', lista.length)
+          } catch {}
+        }
 
         if (lista.length > 0) {
           const contato = lista[0]
