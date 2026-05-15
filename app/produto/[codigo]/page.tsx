@@ -136,7 +136,7 @@ export default async function ProdutoPage({ params }: { params: { codigo: string
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const produtosValidos = (data?.data ?? []).filter((p: any) =>
-      p.codigo && String(p.codigo).trim() !== ''
+      p.codigo && String(p.codigo).trim() !== '' && String(p.codigo).trim() !== '123456'
     )
 
     // Guarda raw para log

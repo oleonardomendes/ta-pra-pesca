@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import PixButton from '@/components/PixButton'
 import MPCheckoutBrick from '@/components/MPCheckoutBrick'
 
@@ -431,6 +432,15 @@ export default function CheckoutForm({
             checkoutUrl={checkoutUrl}
             kitPreco={totalComFrete}
           />
+
+          <div className="cf-criar-conta">
+            <p className="cf-criar-conta-txt">
+              Crie sua conta e acompanhe seus pedidos facilmente
+            </p>
+            <Link href="/login?register=true" className="cf-criar-conta-btn">
+              Criar conta
+            </Link>
+          </div>
         </div>
       )}
     </>
@@ -529,4 +539,19 @@ const styles = `
     color: var(--muted); font-size: 12px; margin: 4px 0;
   }
   .cf-divisor-line { flex: 1; height: 1px; background: var(--border); }
+  .cf-criar-conta {
+    margin-top: 20px; padding: 16px;
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    background: var(--cream); text-align: center;
+  }
+  .cf-criar-conta-txt {
+    font-size: 13px; color: var(--muted); margin-bottom: 10px;
+  }
+  .cf-criar-conta-btn {
+    display: inline-block; padding: 9px 24px;
+    border: 1.5px solid var(--g700); border-radius: 50px;
+    font-size: 13px; font-weight: 700; color: var(--g700);
+    text-decoration: none; transition: background .15s, color .15s;
+  }
+  .cf-criar-conta-btn:hover { background: var(--g700); color: #fff; }
 `

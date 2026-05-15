@@ -128,7 +128,7 @@ export default function Kits() {
               <p className="kit-tagline">{kit.tagline}</p>
 
               <div className="kit-price">R$&nbsp;{kit.price}</div>
-              <div className="kit-price-note">ou parcelado no cartão</div>
+              <div className="kit-price-note">ou em até 12x no cartão</div>
               <div className="kit-sep" />
 
               <div className="kit-items-lbl">O que vem no kit</div>

@@ -53,7 +53,9 @@ export default async function Home({ searchParams = {} }: HomeProps) {
     );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    produtos = (data?.data ?? []).map((p: any) => {
+    produtos = (data?.data ?? []).filter((p: any) =>
+      String(p.codigo || '').trim() !== '123456'
+    ).map((p: any) => {
       const custom = customMap[p.codigo] || null;
       const blingImg = String(p.imagemURL || p.imagemThumbnail || "");
       const imagens: string[] = custom?.imagens?.filter(Boolean).length
@@ -85,16 +87,7 @@ export default async function Home({ searchParams = {} }: HomeProps) {
     produtos = [];
   }
 
-  const busca = searchParams.busca?.trim() || "";
-  if (busca) {
-    const q = busca.toLowerCase();
-    produtos = produtos.filter(
-      (p) =>
-        p.nome.toLowerCase().includes(q) ||
-        p.descricao.toLowerCase().includes(q)
-    );
-  }
-
+  const initialBusca = searchParams.busca?.trim() || "";
   const initialCategoria = searchParams.categoria || "";
 
   return (
@@ -104,16 +97,14 @@ export default async function Home({ searchParams = {} }: HomeProps) {
       <StoreHeader />
 
       <section className="loja-hero">
-        <p className="loja-eyebrow">
-          {busca ? `Resultados para "${busca}"` : "Todos os produtos"}
-        </p>
+        <p className="loja-eyebrow">Todos os produtos</p>
         <h1 className="loja-titulo">NOSSA LOJA</h1>
         <p className="loja-sub">
           Equipamentos de pesca com procedência. Compre direto e receba em casa.
         </p>
       </section>
 
-      <LojaGrid produtos={produtos} initialCategoria={initialCategoria} />
+      <LojaGrid produtos={produtos} initialCategoria={initialCategoria} initialBusca={initialBusca} />
 
       <Link href="/kits" className="loja-banner">
         Quer economizar? Veja nossos kits completos →

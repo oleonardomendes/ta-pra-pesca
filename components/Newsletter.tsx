@@ -20,9 +20,9 @@ export default function Newsletter() {
 
       <section className="nl-root">
         <p className="nl-eyebrow">NEWSLETTER</p>
-        <h2 className="nl-titulo">Receba todas as promoções</h2>
+        <h2 className="nl-titulo">Dicas de pesca e promoções exclusivas</h2>
         <p className="nl-sub">
-          Quer receber nossas ofertas? Cadastre-se e comece a recebê-las!
+          1 e-mail por semana. Sem spam. Cancele quando quiser.
         </p>
 
         {sent ? (

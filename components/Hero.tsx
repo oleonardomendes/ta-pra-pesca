@@ -104,18 +104,15 @@ export default function Hero() {
             <span className="accent">NA BEIRA D&apos;ÁGUA</span>
           </h1>
           <p className="hero-sub">
-            Kits montados por quem entende de pesca — equipamento certo, na medida certa,
-            pra você <strong>chegar e pescar de primeira.</strong>
+            Equipamentos de pesca com procedência, compatíveis entre si e{' '}
+            <strong>prontos pra você pescar de primeira.</strong>
           </p>
           <div className="hero-btns">
-            <Link href="#kits" className="btn-amber">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-                <path d="M12 5v14M5 12l7 7 7-7" />
-              </svg>
-              Ver os kits
+            <Link href="/kits" className="btn-amber">
+              Ver kits completos →
             </Link>
-            <Link href="#como-funciona" className="hero-ghost">
-              Como funciona →
+            <Link href="/" className="hero-ghost">
+              ou explore os produtos individuais ↓
             </Link>
           </div>
         </div>

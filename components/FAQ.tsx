@@ -25,7 +25,7 @@ const faqs = [
   },
   {
     q: "Quanto tempo demora pra chegar?",
-    a: "O prazo depende da sua localização. Assim que o pagamento é confirmado, o pedido é separado e enviado rapidamente. Você recebe o código de rastreio pra acompanhar tudo em tempo real.",
+    a: "O prazo varia conforme sua região. Em geral:\n• Sul e Sudeste: 3 a 7 dias úteis\n• Centro-Oeste e Nordeste: 5 a 10 dias úteis\n• Norte: 7 a 15 dias úteis\n\nAssim que seu pedido for enviado, você recebe o código de rastreio por e-mail para acompanhar em tempo real.",
   },
 ];
 
@@ -56,9 +56,9 @@ export default function FAQ() {
         .faq-body {
           font-size: 14.5px; color: var(--muted); line-height: 1.72;
           overflow: hidden; transition: max-height .38s ease, padding .38s;
-          max-height: 0;
+          max-height: 0; white-space: pre-line;
         }
-        .faq-body.open { max-height: 300px; padding-bottom: 22px; }
+        .faq-body.open { max-height: 400px; padding-bottom: 22px; }
       `}</style>
 
       <section className="faq" id="faq">

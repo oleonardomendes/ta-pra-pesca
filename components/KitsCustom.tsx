@@ -76,7 +76,7 @@ export default async function KitsCustom() {
             {kit.tagline && <p className="kit-tagline">{kit.tagline}</p>}
 
             <div className="kit-price">R$&nbsp;{kit.preco}</div>
-            <div className="kit-price-note">ou parcelado no cartão</div>
+            <div className="kit-price-note">ou em até 12x no cartão</div>
             <div className="kit-sep" />
 
             {kit.itens && kit.itens.length > 0 && (

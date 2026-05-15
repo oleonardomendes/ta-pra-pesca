@@ -25,6 +25,7 @@ export interface BlingProduto {
 interface Props {
   produtos: BlingProduto[]
   initialCategoria?: string
+  initialBusca?: string
 }
 
 const fmt = (n: number) =>
@@ -55,8 +56,9 @@ function ImageWithFallback({ src, alt, height = 260 }: { src: string; alt: strin
   )
 }
 
-export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
+export default function LojaGrid({ produtos, initialCategoria = '', initialBusca = '' }: Props) {
   const [categoriaAtiva, setCategoriaAtiva] = useState(initialCategoria || 'Todos')
+  const [busca, setBusca] = useState(initialBusca)
   const { addItem } = useCart()
 
   const destaques = produtos.filter(p => p.destaque)
@@ -65,9 +67,13 @@ export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
     new Set(produtos.map(p => p.categoria).filter(Boolean))
   ).sort()]
 
-  const filtered = categoriaAtiva === 'Todos'
-    ? produtos
-    : produtos.filter(p => p.categoria === categoriaAtiva)
+  const filtered = produtos
+    .filter(p => categoriaAtiva === 'Todos' || p.categoria === categoriaAtiva)
+    .filter(p => {
+      if (!busca.trim()) return true
+      const q = busca.toLowerCase()
+      return p.nome.toLowerCase().includes(q) || p.descricao.toLowerCase().includes(q)
+    })
 
   return (
     <>
@@ -114,6 +120,25 @@ export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
         </section>
       )}
 
+      {/* ── Busca client-side ─────────────────────────── */}
+      <div className="lg-busca-wrap">
+        <svg className="lg-busca-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+        <input
+          type="search"
+          className="lg-busca-input"
+          placeholder="Buscar produto por nome…"
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          aria-label="Buscar produto"
+        />
+        {busca && (
+          <button className="lg-busca-clear" onClick={() => setBusca('')} aria-label="Limpar busca">✕</button>
+        )}
+      </div>
+
       {/* ── Filtro de categorias ───────────────────────── */}
       <FiltroCategorias
         categorias={categorias}
@@ -124,11 +149,15 @@ export default function LojaGrid({ produtos, initialCategoria = '' }: Props) {
       {/* ── Grid principal ─────────────────────────────── */}
       <div className="grid-section">
         {filtered.length === 0 ? (
-          <p className="grid-vazio">
+          <div className="grid-vazio">
             {produtos.length === 0
               ? 'Nenhum produto disponível no momento.'
-              : `Nenhum produto em "${categoriaAtiva}".`}
-          </p>
+              : busca.trim()
+                ? <>Nenhum produto encontrado para &ldquo;<strong>{busca}</strong>&rdquo;.{' '}
+                    <button className="grid-vazio-link" onClick={() => setBusca('')}>Ver todos os produtos →</button></>
+                : `Nenhum produto em "${categoriaAtiva}".`
+            }
+          </div>
         ) : (
           <div className="produtos-grid">
             {filtered.map(produto => (
@@ -232,11 +261,37 @@ const gridStyles = `
     box-shadow: var(--sh-btn-g); transition: background .2s, transform .2s;
   }
   .pcd-btn-comprar:hover { background: var(--g900); transform: translateY(-2px); }
+  /* ── Busca ── */
+  .lg-busca-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; border: 1.5px solid var(--border);
+    border-radius: 50px; padding: 0 16px; height: 44px;
+    margin: 0 6% 0; transition: border-color .2s;
+  }
+  .lg-busca-wrap:focus-within { border-color: var(--g500); }
+  .lg-busca-icon { color: var(--muted); flex-shrink: 0; width: 16px; height: 16px; }
+  .lg-busca-input {
+    flex: 1; border: none; background: transparent; outline: none;
+    font-family: var(--ff-body); font-size: 14px; color: var(--dark);
+  }
+  .lg-busca-input::placeholder { color: var(--muted); }
+  .lg-busca-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  .lg-busca-clear {
+    background: none; border: none; color: var(--muted);
+    font-size: 12px; cursor: pointer; padding: 4px; line-height: 1;
+    transition: color .15s;
+  }
+  .lg-busca-clear:hover { color: var(--dark); }
   /* ── Grid principal ── */
   .grid-section { background: var(--cream); padding: 40px 6% 80px; }
   .grid-vazio {
     text-align: center; padding: 60px 0;
     color: var(--muted); font-size: 16px;
+  }
+  .grid-vazio-link {
+    background: none; border: none; color: var(--g700);
+    font-size: 16px; font-weight: 600; cursor: pointer;
+    text-decoration: underline; font-family: var(--ff-body);
   }
   .produtos-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;

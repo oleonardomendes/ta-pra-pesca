@@ -17,6 +17,7 @@ const CATEGORIAS = [
 
 export default function StoreHeader() {
   const [busca, setBusca] = useState('')
+  const [searchAberto, setSearchAberto] = useState(false)
   const { totalItens, openCart } = useCart()
   const router = useRouter()
 
@@ -90,6 +91,17 @@ export default function StoreHeader() {
           </div>
 
           <div className="sh-icons">
+            {/* Lupa mobile */}
+            <button
+              className="sh-icon-btn sh-lupa-mobile"
+              onClick={() => setSearchAberto(v => !v)}
+              aria-label="Buscar"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20" aria-hidden>
+                <circle cx="11" cy="11" r="8" />
+                <path d="M21 21l-4.35-4.35" />
+              </svg>
+            </button>
             {waNumber && (
               <a
                 href={`https://wa.me/${waNumber}`}
@@ -148,6 +160,26 @@ export default function StoreHeader() {
           </div>
         </div>
 
+        {/* Busca mobile expansível */}
+        {searchAberto && (
+          <div className="sh-search-mobile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" aria-hidden style={{ flexShrink: 0, color: 'var(--muted)' }}>
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              type="search"
+              className="sh-search-input"
+              placeholder="O que você está buscando?"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              onKeyDown={handleSearch}
+              aria-label="Buscar produtos"
+              autoFocus
+            />
+          </div>
+        )}
+
         {/* Barra de categorias */}
         <nav className="sh-cat-nav" aria-label="Categorias">
           {CATEGORIAS.map(({ label, key }) => (
@@ -159,6 +191,14 @@ export default function StoreHeader() {
               {label}
             </Link>
           ))}
+          <a
+            href="https://rastreamento.correios.com.br/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="sh-cat-link sh-cat-rastrear"
+          >
+            Rastrear pedido ↗
+          </a>
           <Link href="/kits" className="sh-cat-link sh-cat-kits">
             Kits Especiais →
           </Link>
@@ -280,9 +320,19 @@ const styles = `
   .sh-cat-kits { color: var(--g700); margin-left: auto; }
   .sh-cat-kits:hover { color: var(--g900); border-bottom-color: var(--g700); }
 
+  .sh-lupa-mobile { display: none; }
+  .sh-cat-rastrear { color: var(--muted); margin-left: 8px; }
+  .sh-cat-rastrear:hover { color: var(--g700); border-bottom-color: var(--g300); }
+  .sh-search-mobile {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 4%; border-top: 1px solid var(--border);
+    background: #fff;
+  }
+  .sh-search-mobile .sh-search-input { flex: 1; }
   @media (max-width: 640px) {
     .sh-logo { font-size: 20px; }
     .sh-search { display: none; }
+    .sh-lupa-mobile { display: flex; }
     .sh-top { padding: 0 4%; }
     .sh-cat-nav { padding: 0 4%; }
   }
