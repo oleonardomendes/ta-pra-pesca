@@ -238,27 +238,85 @@ export async function POST(req: Request) {
         contatoId = res?.data?.id || null
         console.log('[webhook] contato criado:', contatoId, nomeCliente)
       } catch (e: any) {
-        console.log('[webhook] erro criar contato:', e.message)
+        console.log('[webhook] não criou com CPF:', e.message.slice(0, 120))
 
-        // CPF já existe em outro contato — busca pelo erro
         if (e.message.includes('CPF') || e.message.includes('cnpj')) {
-          try {
-            await delay(300)
-            const cpfFormatado = cpfLimpo.replace(
-              /(\d{3})(\d{3})(\d{3})(\d{2})/,
-              '$1.$2.$3-$4'
-            )
-            const busca = await blingFetch(
-              `/contatos?pesquisa=${encodeURIComponent(cpfFormatado)}&limite=10`
-            )
-            const encontrado = busca?.data?.find((c: any) =>
-              (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
-            )
-            if (encontrado) {
-              contatoId = encontrado.id
-              console.log('[webhook] contato encontrado após erro CPF:', contatoId)
+          // Extrai o nome do contato da mensagem de erro
+          // Ex: "O CPF já está cadastrado no contato Armanda Flavia"
+          const matchNome = e.message.match(/no contato ([^"'}\]]+?)(?:["\]}]|$)/)
+          const nomeNoBling = matchNome?.[1]?.trim()
+          console.log('[webhook] nome extraído do erro:', nomeNoBling)
+
+          if (nomeNoBling) {
+            try {
+              await delay(300)
+              const busca = await blingFetch(
+                `/contatos?pesquisa=${encodeURIComponent(nomeNoBling)}&limite=20`
+              )
+              const lista = busca?.data || []
+              console.log('[webhook] busca por nome retornou:', lista.length)
+
+              const encontrado = lista.find((c: any) =>
+                (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
+              )
+
+              if (encontrado) {
+                contatoId = encontrado.id
+                console.log('[webhook] contato encontrado por nome:', contatoId, encontrado.nome)
+
+                // Atualiza endereço do contato existente
+                try {
+                  await delay(300)
+                  await blingFetch(`/contatos/${contatoId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      nome: encontrado.nome,
+                      tipo: 'F',
+                      situacao: 'A',
+                      endereco: {
+                        geral: {
+                          endereco: enderecoParsed?.logradouro || '',
+                          cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                          bairro: enderecoParsed?.bairro || '',
+                          municipio: enderecoParsed?.cidade || '',
+                          uf: enderecoParsed?.estado || '',
+                          numero: enderecoParsed?.numero || '',
+                          complemento: enderecoParsed?.complemento || '',
+                        },
+                      },
+                    }),
+                  })
+                  console.log('[webhook] endereço atualizado no contato existente')
+                } catch (upErr: any) {
+                  console.log('[webhook] não atualizou endereço:', upErr.message.slice(0, 80))
+                }
+              }
+            } catch (bErr: any) {
+              console.log('[webhook] erro busca por nome:', bErr.message.slice(0, 80))
             }
-          } catch {}
+          }
+
+          // Se ainda não encontrou, tenta CPF formatado
+          if (!contatoId && cpfLimpo) {
+            try {
+              await delay(300)
+              const cpfFormatado = cpfLimpo.replace(
+                /(\d{3})(\d{3})(\d{3})(\d{2})/,
+                '$1.$2.$3-$4'
+              )
+              const busca2 = await blingFetch(
+                `/contatos?pesquisa=${encodeURIComponent(cpfFormatado)}&limite=10`
+              )
+              const encontrado2 = busca2?.data?.find((c: any) =>
+                (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
+              )
+              if (encontrado2) {
+                contatoId = encontrado2.id
+                console.log('[webhook] contato encontrado por CPF formatado:', contatoId)
+              }
+            } catch {}
+          }
         }
       }
     }
