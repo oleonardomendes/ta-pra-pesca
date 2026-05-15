@@ -149,67 +149,86 @@ export async function POST(req: Request) {
 
     let contatoId: number | null = null
 
-    // ETAPA 1: Busca por CPF primeiro (evita duplicatas)
+    // ETAPA 1: Busca por CPF com parâmetro correto
     if (cpfLimpo) {
       try {
         await delay(300)
-        const cpfFormatado = cpfLimpo.replace(
-          /(\d{3})(\d{3})(\d{3})(\d{2})/,
-          '$1.$2.$3-$4'
+        // Usa o parâmetro correto: numeroDocumento
+        const busca = await blingFetch(
+          `/contatos?numeroDocumento=${cpfLimpo}&limite=5`
         )
+        const lista = busca?.data || []
+        console.log('[webhook] busca numeroDocumento retornou:', lista.length)
 
-        const [buscaFormatado, buscaSemFormato] = await Promise.allSettled([
-          blingFetch(`/contatos?pesquisa=${encodeURIComponent(cpfFormatado)}&limite=10`),
-          blingFetch(`/contatos?pesquisa=${cpfLimpo}&limite=10`),
-        ])
+        if (lista.length > 0) {
+          const contato = lista[0]
+          contatoId = contato.id
+          console.log('[webhook] contato encontrado:', contatoId, contato.nome, contato.situacao)
 
-        const resultados = [
-          ...(buscaFormatado.status === 'fulfilled' ? buscaFormatado.value?.data || [] : []),
-          ...(buscaSemFormato.status === 'fulfilled' ? buscaSemFormato.value?.data || [] : []),
-        ]
-
-        const encontrado = resultados.find((c: any) =>
-          (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
-        )
-
-        if (encontrado) {
-          contatoId = encontrado.id
-          console.log('[webhook] contato existente encontrado:', contatoId, encontrado.nome)
-
-          // Atualiza endereço no formato correto
-          try {
-            await delay(300)
-            await blingFetch(`/contatos/${contatoId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                nome: nomeCliente,
-                tipo: 'F',
-                situacao: 'A',
-                endereco: {
-                  geral: {
-                    endereco: enderecoParsed?.logradouro || '',
-                    cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
-                    bairro: enderecoParsed?.bairro || '',
-                    municipio: enderecoParsed?.cidade || '',
-                    uf: enderecoParsed?.estado || '',
-                    numero: enderecoParsed?.numero || '',
-                    complemento: enderecoParsed?.complemento || '',
+          // Se contato está deletado, reativa
+          if (contato.situacao === 'E' || contato.situacao === 'I') {
+            try {
+              await delay(300)
+              await blingFetch(`/contatos/${contatoId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  nome: contato.nome === 'Cliente' || contato.nome === 'Consumidor Final'
+                    ? nomeCliente
+                    : contato.nome,
+                  tipo: 'F',
+                  situacao: 'A',
+                  endereco: {
+                    geral: {
+                      endereco: enderecoParsed?.logradouro || '',
+                      cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                      bairro: enderecoParsed?.bairro || '',
+                      municipio: enderecoParsed?.cidade || '',
+                      uf: enderecoParsed?.estado || '',
+                      numero: enderecoParsed?.numero || '',
+                      complemento: enderecoParsed?.complemento || '',
+                    },
                   },
-                },
-              }),
-            })
-            console.log('[webhook] contato atualizado com endereco.geral')
-          } catch (upErr: any) {
-            console.log('[webhook] não atualizou endereço:', upErr.message.slice(0, 80))
+                }),
+              })
+              console.log('[webhook] contato reativado:', contatoId)
+            } catch (reErr: any) {
+              console.log('[webhook] erro reativar:', reErr.message.slice(0, 80))
+            }
+          } else {
+            // Contato ativo — atualiza endereço
+            try {
+              await delay(300)
+              await blingFetch(`/contatos/${contatoId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  nome: contato.nome,
+                  tipo: 'F',
+                  situacao: 'A',
+                  endereco: {
+                    geral: {
+                      endereco: enderecoParsed?.logradouro || '',
+                      cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                      bairro: enderecoParsed?.bairro || '',
+                      municipio: enderecoParsed?.cidade || '',
+                      uf: enderecoParsed?.estado || '',
+                      numero: enderecoParsed?.numero || '',
+                      complemento: enderecoParsed?.complemento || '',
+                    },
+                  },
+                }),
+              })
+              console.log('[webhook] endereço atualizado no contato existente')
+            } catch {}
           }
         }
-      } catch (e: any) {
-        console.log('[webhook] erro na busca CPF:', e.message)
+      } catch (bErr: any) {
+        console.log('[webhook] erro busca numeroDocumento:', bErr.message.slice(0, 80))
       }
     }
 
-    // ETAPA 2: Só cria se não encontrou
+    // ETAPA 2: Só cria se não encontrou por CPF
     if (!contatoId) {
       try {
         await delay(300)
@@ -238,118 +257,38 @@ export async function POST(req: Request) {
         contatoId = res?.data?.id || null
         console.log('[webhook] contato criado:', contatoId, nomeCliente)
       } catch (e: any) {
-        console.log('[webhook] não criou com CPF:', e.message.slice(0, 120))
+        console.log('[webhook] erro criar contato:', e.message.slice(0, 100))
 
-        if (e.message.includes('CPF') || e.message.includes('cnpj')) {
-          // Extrai o nome do contato da mensagem de erro
-          // Ex: "O CPF já está cadastrado no contato Armanda Flavia"
-          const matchNome = e.message.match(/no contato ([^"'}\]]+?)(?:["\]}]|$)/)
-          const nomeNoBling = matchNome?.[1]?.trim()
-          console.log('[webhook] nome extraído do erro:', nomeNoBling)
-
-          if (nomeNoBling) {
-            try {
-              await delay(300)
-              const busca = await blingFetch(
-                `/contatos?pesquisa=${encodeURIComponent(nomeNoBling)}&limite=20`
-              )
-              const lista = busca?.data || []
-              console.log('[webhook] busca por nome retornou:', lista.length)
-
-              const encontrado = lista.find((c: any) =>
-                (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
-              )
-
-              if (encontrado) {
-                contatoId = encontrado.id
-                console.log('[webhook] contato encontrado por nome:', contatoId, encontrado.nome)
-
-                // Atualiza endereço do contato existente
-                try {
-                  await delay(300)
-                  await blingFetch(`/contatos/${contatoId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      nome: encontrado.nome,
-                      tipo: 'F',
-                      situacao: 'A',
-                      endereco: {
-                        geral: {
-                          endereco: enderecoParsed?.logradouro || '',
-                          cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
-                          bairro: enderecoParsed?.bairro || '',
-                          municipio: enderecoParsed?.cidade || '',
-                          uf: enderecoParsed?.estado || '',
-                          numero: enderecoParsed?.numero || '',
-                          complemento: enderecoParsed?.complemento || '',
-                        },
-                      },
-                    }),
-                  })
-                  console.log('[webhook] endereço atualizado no contato existente')
-                } catch (upErr: any) {
-                  console.log('[webhook] não atualizou endereço:', upErr.message.slice(0, 80))
-                }
-              }
-            } catch (bErr: any) {
-              console.log('[webhook] erro busca por nome:', bErr.message.slice(0, 80))
-            }
-          }
-
-          // Se ainda não encontrou, tenta CPF formatado
-          if (!contatoId && cpfLimpo) {
-            try {
-              await delay(300)
-              const cpfFormatado = cpfLimpo.replace(
-                /(\d{3})(\d{3})(\d{3})(\d{2})/,
-                '$1.$2.$3-$4'
-              )
-              const busca2 = await blingFetch(
-                `/contatos?pesquisa=${encodeURIComponent(cpfFormatado)}&limite=10`
-              )
-              const encontrado2 = busca2?.data?.find((c: any) =>
-                (c.numeroDocumento || '').replace(/\D/g, '') === cpfLimpo
-              )
-              if (encontrado2) {
-                contatoId = encontrado2.id
-                console.log('[webhook] contato encontrado por CPF formatado:', contatoId)
-              }
-            } catch {}
-          }
-        }
-      }
-    }
-
-    // ETAPA 3: Último fallback — cria sem CPF (nunca bloqueia o pedido)
-    if (!contatoId) {
-      try {
-        await delay(300)
-        const res = await blingFetch('/contatos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            nome: nomeCliente,
-            tipo: 'F',
-            situacao: 'A',
-            email: emailValido,
-            endereco: {
-              geral: {
-                endereco: enderecoParsed?.logradouro || '',
-                cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
-                bairro: enderecoParsed?.bairro || '',
-                municipio: enderecoParsed?.cidade || '',
-                uf: enderecoParsed?.estado || '',
-                numero: enderecoParsed?.numero || '',
-                complemento: enderecoParsed?.complemento || '',
+        // CPF conflita mas busca não encontrou (contato excluído definitivamente)
+        // Cria sem CPF como último recurso
+        try {
+          await delay(300)
+          const res = await blingFetch('/contatos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              nome: nomeCliente,
+              tipo: 'F',
+              situacao: 'A',
+              email: emailValido,
+              endereco: {
+                geral: {
+                  endereco: enderecoParsed?.logradouro || '',
+                  cep: (enderecoParsed?.cep || '').replace(/\D/g, ''),
+                  bairro: enderecoParsed?.bairro || '',
+                  municipio: enderecoParsed?.cidade || '',
+                  uf: enderecoParsed?.estado || '',
+                  numero: enderecoParsed?.numero || '',
+                  complemento: enderecoParsed?.complemento || '',
+                },
               },
-            },
-          }),
-        })
-        contatoId = res?.data?.id || null
-        console.log('[webhook] contato sem CPF criado:', contatoId)
-      } catch (e: any) {
-        console.error('[webhook] falha total contato:', e.message)
+            }),
+          })
+          contatoId = res?.data?.id || null
+          console.log('[webhook] contato sem CPF criado:', contatoId)
+        } catch (e3: any) {
+          console.error('[webhook] falha total contato:', e3.message.slice(0, 80))
+        }
       }
     }
 
