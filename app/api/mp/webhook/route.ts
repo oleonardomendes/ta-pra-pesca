@@ -16,24 +16,17 @@ const delay = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 export async function POST(req: Request) {
   const body = await req.json()
+
+  const type = body?.type || body?.topic
+  const paymentId = body?.data?.id || body?.resource
+
+  if (type !== 'payment' || !paymentId) {
+    return NextResponse.json({ ok: true })
+  }
+
   console.log('[webhook] recebido:', JSON.stringify(body))
 
-  // Dispara processamento em background (sem await)
-  processarPedido(body).catch(e =>
-    console.error('[webhook] erro background:', e.message)
-  )
-
-  // Responde imediatamente ao MP
-  return NextResponse.json({ ok: true })
-}
-
-async function processarPedido(body: any) {
   try {
-    if (body.type !== 'payment') return
-
-    const paymentId = body.data?.id
-    if (!paymentId) return
-
     // Busca dados do pagamento no MP
     let data: any
     try {
@@ -41,12 +34,12 @@ async function processarPedido(body: any) {
       data = await payment.get({ id: paymentId })
     } catch (e: any) {
       console.log('[webhook] pagamento não encontrado:', paymentId)
-      return
+      return NextResponse.json({ ok: true })
     }
 
     console.log('[webhook] status:', data.status, 'ref:', data.external_reference)
 
-    if (data.status !== 'approved') return
+    if (data.status !== 'approved') return NextResponse.json({ ok: true })
 
     const externalRef = data.external_reference
 
@@ -97,7 +90,7 @@ async function processarPedido(body: any) {
       .eq('id', pedidoId!)
       .single()
 
-    if (!pedidoCompleto) return
+    if (!pedidoCompleto) return NextResponse.json({ ok: true })
 
     // Lock distribuído: só processa se bling_pedido_id ainda for null
     const { data: lockResult } = await supabase
@@ -110,7 +103,7 @@ async function processarPedido(body: any) {
 
     if (!lockResult) {
       console.log('[webhook] pedido já sendo processado por outro webhook')
-      return
+      return NextResponse.json({ ok: true })
     }
 
     console.log('[webhook] lock adquirido, processando Bling...')
@@ -306,14 +299,13 @@ async function processarPedido(body: any) {
       await supabase.from('pedidos')
         .update({ bling_pedido_id: null })
         .eq('id', pedidoId!)
-      return
+      return NextResponse.json({ ok: true })
     }
 
     // ============================================
     // A PARTIR DAQUI: SEMPRE CRIA O PEDIDO
     // ============================================
 
-    // Cria o pedido no Bling
     const itensPedido = Array.isArray(pedidoCompleto.itens)
       ? pedidoCompleto.itens
       : JSON.parse(typeof pedidoCompleto.itens === 'string' ? pedidoCompleto.itens : '[]')
@@ -489,4 +481,6 @@ async function processarPedido(body: any) {
   } catch (e: any) {
     console.error('[webhook] erro geral:', e.message)
   }
+
+  return NextResponse.json({ ok: true })
 }
