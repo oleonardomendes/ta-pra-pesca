@@ -367,6 +367,8 @@ export async function POST(req: Request) {
           }],
     }
 
+    let blingPedidoId: any = null
+
     try {
       await delay(600)
       console.log('[webhook] criando pedido Bling...')
@@ -376,14 +378,35 @@ export async function POST(req: Request) {
         body: JSON.stringify(blingBody),
       })
 
-      const blingPedidoId = blingRes?.data?.id
+      blingPedidoId = blingRes?.data?.id
       console.log('[webhook] pedido Bling criado:', blingPedidoId)
 
       await supabase.from('pedidos')
         .update({ bling_pedido_id: String(blingPedidoId) })
         .eq('id', pedidoId!)
 
-      // Adiciona ao carrinho do Melhor Envio
+    } catch (bErr: any) {
+      console.error('[webhook] erro criar pedido Bling:', bErr.message)
+
+      const isDuplicata = bErr.message.includes('"code":3')
+        || bErr.message.includes('"code":50')
+        || bErr.message.includes('idênticas')
+        || bErr.message.includes('mesma situa')
+
+      if (isDuplicata) {
+        console.log('[webhook] pedido já existe no Bling — marcando como processado')
+        await supabase.from('pedidos')
+          .update({ bling_pedido_id: 'duplicata-bling' })
+          .eq('id', pedidoId!)
+      } else {
+        await supabase.from('pedidos')
+          .update({ bling_pedido_id: null })
+          .eq('id', pedidoId!)
+      }
+    }
+
+    // Adiciona ao carrinho do Melhor Envio — roda sempre, novo ou duplicata
+    if (!pedidoCompleto.me_carrinho_id && pedidoCompleto.frete_servico_id) {
       try {
         await delay(500)
 
@@ -440,41 +463,24 @@ export async function POST(req: Request) {
             .update({ me_carrinho_id: meCarrinhoId })
             .eq('id', pedidoId!)
 
-          await delay(400)
-          await blingFetch(`/pedidos/vendas/${blingPedidoId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              observacoesInternas: `ME Carrinho ID: ${meCarrinhoId} | ` +
-                itensPedido.map((item: any) =>
-                  `${item.nome}: ${item.peso || 0.5}kg | ` +
-                  `${item.altura || 15}x${item.largura || 15}x${item.comprimento || 30}cm`
-                ).join(' | '),
-            }),
-          })
-          console.log('[webhook] ME ID salvo no Bling')
+          if (blingPedidoId) {
+            await delay(400)
+            await blingFetch(`/pedidos/vendas/${blingPedidoId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                observacoesInternas: `ME Carrinho ID: ${meCarrinhoId} | ` +
+                  itensPedido.map((item: any) =>
+                    `${item.nome}: ${item.peso || 0.5}kg | ` +
+                    `${item.altura || 15}x${item.largura || 15}x${item.comprimento || 30}cm`
+                  ).join(' | '),
+              }),
+            })
+            console.log('[webhook] ME ID salvo no Bling')
+          }
         }
       } catch (meErr: any) {
         console.log('[webhook] erro ME carrinho:', meErr.message)
-      }
-
-    } catch (bErr: any) {
-      console.error('[webhook] erro criar pedido Bling:', bErr.message)
-
-      const isDuplicata = bErr.message.includes('"code":3')
-        || bErr.message.includes('"code":50')
-        || bErr.message.includes('idênticas')
-        || bErr.message.includes('mesma situa')
-
-      if (isDuplicata) {
-        console.log('[webhook] pedido já existe no Bling — marcando como processado')
-        await supabase.from('pedidos')
-          .update({ bling_pedido_id: 'duplicata-bling' })
-          .eq('id', pedidoId!)
-      } else {
-        await supabase.from('pedidos')
-          .update({ bling_pedido_id: null })
-          .eq('id', pedidoId!)
       }
     }
 
