@@ -414,6 +414,13 @@ export async function POST(req: Request) {
       try {
         await delay(500)
 
+        console.log('[webhook] ME from:', {
+          address: process.env.STORE_ADDRESS,
+          city: process.env.STORE_CITY,
+          phone: process.env.STORE_PHONE,
+          postal_code: process.env.MELHOR_ENVIO_ORIGIN_CEP,
+        })
+
         const meCarrinho = await melhorEnvioFetch('/me/cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
