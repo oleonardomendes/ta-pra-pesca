@@ -185,6 +185,7 @@ export async function POST(req: Request) {
                     : contato.nome,
                   tipo: 'F',
                   situacao: 'A',
+                  numeroDocumento: contato.numeroDocumento || cpfLimpo,
                   endereco: {
                     geral: {
                       endereco: enderecoParsed?.logradouro || '',
@@ -213,6 +214,7 @@ export async function POST(req: Request) {
                   nome: contato.nome,
                   tipo: 'F',
                   situacao: 'A',
+                  numeroDocumento: contato.numeroDocumento || cpfLimpo,
                   endereco: {
                     geral: {
                       endereco: enderecoParsed?.logradouro || '',
