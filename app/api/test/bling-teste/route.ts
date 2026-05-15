@@ -126,6 +126,8 @@ export async function GET(req: Request) {
         transporte: {
           fretePorConta: 'D',
           frete: frete,
+          quantidadeVolumes: 1,
+          pesoBruto: 0.26,
           volumes: [{ id: 1, servico: 'Correios SEDEX' }],
           etiqueta: {
             nome: 'Cliente Teste Site',
@@ -139,6 +141,7 @@ export async function GET(req: Request) {
             nomePais: 'Brasil',
           },
         },
+        observacoesInternas: 'Vara de Pesca: 0.26kg | 9x9x127cm',
         itens: [{
           id: 1,
           ...(produtoId ? { produto: { id: produtoId } } : {}),

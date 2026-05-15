@@ -322,6 +322,10 @@ async function processarPedido(body: any) {
 
     const hoje = new Date().toISOString().split('T')[0]
 
+    const pesoTotal = itensPedido.reduce((acc: number, item: any) =>
+      acc + (Number(item.peso) || 0.5) * (Number(item.quantidade) || 1), 0
+    )
+
     const blingBody = {
       data: hoje,
       numero: String(paymentId).slice(-6),
@@ -332,6 +336,8 @@ async function processarPedido(body: any) {
       transporte: {
         fretePorConta: 'D',
         frete: Number(pedidoCompleto.frete_valor) || 0,
+        quantidadeVolumes: itensPedido.length,
+        pesoBruto: Number(pesoTotal.toFixed(3)),
         volumes: [{ id: 1, servico: pedidoCompleto.frete_servico || 'Correios' }],
         etiqueta: enderecoParsed ? {
           nome: nomeCliente,
@@ -449,7 +455,7 @@ async function processarPedido(body: any) {
             body: JSON.stringify({
               observacoesInternas: `ME Carrinho ID: ${meCarrinhoId} | ` +
                 itensPedido.map((item: any) =>
-                  `${item.nome}: ${item.peso || 0.5}kg ` +
+                  `${item.nome}: ${item.peso || 0.5}kg | ` +
                   `${item.altura || 15}x${item.largura || 15}x${item.comprimento || 30}cm`
                 ).join(' | '),
             }),
