@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import PixButton from '@/components/PixButton'
 import MPCheckoutBrick from '@/components/MPCheckoutBrick'
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 
 interface FreteOpcao {
   id: number
@@ -47,13 +48,33 @@ function mascaraCPF(v: string) {
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
 }
 
+function validarCPF(cpf: string): boolean {
+  const d = cpf.replace(/\D/g, '')
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += Number(d[i]) * (10 - i)
+  let r = (sum * 10) % 11
+  if (r === 10 || r === 11) r = 0
+  if (r !== Number(d[9])) return false
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += Number(d[i]) * (11 - i)
+  r = (sum * 10) % 11
+  if (r === 10 || r === 11) r = 0
+  return r === Number(d[10])
+}
+
 export default function CheckoutForm({
   kitNome, kitPreco, backUrls, onFreteSelected, onEnderecoComplete, produtosParaFrete,
 }: Props) {
+  const [isGuest, setIsGuest] = useState<boolean | null>(null)
   const [step, setStep] = useState(1)
   const [checkoutUrl, setCheckoutUrl] = useState('')
   const [pedidoId, setPedidoId] = useState('')
   const [loadingPayment, setLoadingPayment] = useState(false)
+
+  // Guest data (Step 0)
+  const [guestNome, setGuestNome] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
 
   // Endereço
   const [cep, setCep] = useState('')
@@ -72,6 +93,15 @@ export default function CheckoutForm({
   const [calculandoFrete, setCalculandoFrete] = useState(false)
 
   const [erros, setErros] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const guest = !user
+      setIsGuest(guest)
+      setStep(guest ? 0 : 1)
+    })
+  }, [])
 
   async function handleCepChange(valor: string) {
     const masked = mascaraCEP(valor)
@@ -93,15 +123,31 @@ export default function CheckoutForm({
     }
   }
 
+  function validarStep0() {
+    const e: Record<string, string> = {}
+    if (guestNome.trim().length < 3) e.guestNome = 'Informe seu nome completo (mínimo 3 caracteres)'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) e.guestEmail = 'E-mail inválido'
+    if (!validarCPF(cpf)) e.cpf = 'CPF inválido'
+    setErros(e)
+    return Object.keys(e).length === 0
+  }
+
   function validarStep1() {
     const e: Record<string, string> = {}
     if (cep.replace(/\D/g, '').length !== 8) e.cep = 'CEP inválido'
     if (!logradouro.trim()) e.logradouro = 'Obrigatório'
     if (!numero.trim()) e.numero = 'Obrigatório'
     if (!bairro.trim()) e.bairro = 'Obrigatório'
-    if (cpf.replace(/\D/g, '').length !== 11) e.cpf = 'CPF inválido'
+    // CPF validado no Step 0 para guests
+    if (!isGuest && !validarCPF(cpf)) e.cpf = 'CPF inválido'
     setErros(e)
     return Object.keys(e).length === 0
+  }
+
+  function handleAvancarStep0() {
+    if (!validarStep0()) return
+    setErros({})
+    setStep(1)
   }
 
   async function handleCalcularFrete() {
@@ -149,7 +195,6 @@ export default function CheckoutForm({
       setCheckoutUrl(url || '')
       if (pid) setPedidoId(pid)
 
-      // Pré-registro do pedido com endereço e frete antes do redirecionamento
       if (pid && preferenceId) {
         fetch('/api/pedidos/pre-registro', {
           method: 'POST',
@@ -164,6 +209,7 @@ export default function CheckoutForm({
             freteServicoId: freteSelected?.id,
             itens: produtosParaFrete,
             total: Number(kitPreco) + Number(freteSelected?.preco || 0),
+            ...(isGuest ? { guestNome, guestEmail } : {}),
           }),
         }).catch(() => {})
       }
@@ -180,31 +226,107 @@ export default function CheckoutForm({
 
   const totalComFrete = kitPreco + (freteSelected?.preco || 0)
 
+  if (isGuest === null) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
+        Carregando...
+      </div>
+    )
+  }
+
+  const progressLabels = isGuest
+    ? ['Seus dados', 'Endereço', 'Frete', 'Pagamento']
+    : ['Endereço', 'Frete', 'Pagamento']
+
+  const progressOffset = isGuest ? 0 : 1
+
   return (
     <>
       <style>{styles}</style>
 
       {/* Barra de progresso */}
       <div className="cf-progress">
-        {['Endereço', 'Frete', 'Pagamento'].map((label, i) => {
-          const n = i + 1
+        {progressLabels.map((label, i) => {
+          const n = i + progressOffset
           const ativo = step === n
           const completo = step > n
           return (
             <div key={label} className="cf-progress-item">
               <div className={`cf-progress-dot${ativo ? ' cf-dot-ativo' : completo ? ' cf-dot-completo' : ''}`}>
-                {completo ? '✓' : n}
+                {completo ? '✓' : i + 1}
               </div>
               <span className={`cf-progress-label${ativo ? ' cf-label-ativo' : ''}`}>{label}</span>
-              {i < 2 && <div className={`cf-progress-line${completo ? ' cf-line-completo' : ''}`} />}
+              {i < progressLabels.length - 1 && (
+                <div className={`cf-progress-line${completo ? ' cf-line-completo' : ''}`} />
+              )}
             </div>
           )
         })}
       </div>
 
-      {/* STEP 1 — Endereço e CPF */}
+      {/* STEP 0 — Dados do guest */}
+      {step === 0 && (
+        <div className="cf-section">
+          <div className="cf-field">
+            <label className="cf-label">Nome completo</label>
+            <input
+              className={`cf-input${erros.guestNome ? ' cf-input-erro' : ''}`}
+              placeholder="Seu nome completo"
+              value={guestNome}
+              onChange={e => setGuestNome(e.target.value)}
+              autoComplete="name"
+            />
+            {erros.guestNome && <span className="cf-erro-msg">{erros.guestNome}</span>}
+          </div>
+
+          <div className="cf-field">
+            <label className="cf-label">E-mail</label>
+            <input
+              className={`cf-input${erros.guestEmail ? ' cf-input-erro' : ''}`}
+              type="email"
+              placeholder="seu@email.com"
+              value={guestEmail}
+              onChange={e => setGuestEmail(e.target.value)}
+              autoComplete="email"
+            />
+            {erros.guestEmail && <span className="cf-erro-msg">{erros.guestEmail}</span>}
+          </div>
+
+          <div className="cf-field">
+            <label className="cf-label">CPF</label>
+            <input
+              className={`cf-input${erros.cpf ? ' cf-input-erro' : ''}`}
+              placeholder="000.000.000-00"
+              value={cpf}
+              onChange={e => setCpf(mascaraCPF(e.target.value))}
+              inputMode="numeric"
+            />
+            {erros.cpf && <span className="cf-erro-msg">{erros.cpf}</span>}
+          </div>
+
+          <div className="cf-info-guest">
+            Após o pagamento, você receberá um e-mail para criar sua senha e acompanhar seus pedidos.
+          </div>
+
+          <button className="cf-btn-primary" onClick={handleAvancarStep0}>
+            Continuar →
+          </button>
+
+          <div style={{ textAlign: 'center', marginTop: '4px' }}>
+            <Link href="/login" className="cf-link-login">
+              Já tenho conta — entrar
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 1 — Endereço */}
       {step === 1 && (
         <div className="cf-section">
+          {isGuest && (
+            <button className="cf-btn-back" onClick={() => setStep(0)}>← Editar dados pessoais</button>
+          )}
+
           <div className="cf-field">
             <label className="cf-label">CEP</label>
             <div style={{ position: 'relative' }}>
@@ -275,17 +397,20 @@ export default function CheckoutForm({
             </div>
           </div>
 
-          <div className="cf-field">
-            <label className="cf-label">CPF</label>
-            <input
-              className={`cf-input${erros.cpf ? ' cf-input-erro' : ''}`}
-              placeholder="000.000.000-00"
-              value={cpf}
-              onChange={e => setCpf(mascaraCPF(e.target.value))}
-              inputMode="numeric"
-            />
-            {erros.cpf && <span className="cf-erro-msg">{erros.cpf}</span>}
-          </div>
+          {/* CPF só aparece aqui para usuários logados */}
+          {!isGuest && (
+            <div className="cf-field">
+              <label className="cf-label">CPF</label>
+              <input
+                className={`cf-input${erros.cpf ? ' cf-input-erro' : ''}`}
+                placeholder="000.000.000-00"
+                value={cpf}
+                onChange={e => setCpf(mascaraCPF(e.target.value))}
+                inputMode="numeric"
+              />
+              {erros.cpf && <span className="cf-erro-msg">{erros.cpf}</span>}
+            </div>
+          )}
 
           {erros.frete && <div className="cf-alert">{erros.frete}</div>}
 
@@ -433,14 +558,22 @@ export default function CheckoutForm({
             kitPreco={totalComFrete}
           />
 
-          <div className="cf-criar-conta">
-            <p className="cf-criar-conta-txt">
-              Crie sua conta e acompanhe seus pedidos facilmente
-            </p>
-            <Link href="/login?register=true" className="cf-criar-conta-btn">
-              Criar conta
-            </Link>
-          </div>
+          {!isGuest && (
+            <div className="cf-criar-conta">
+              <p className="cf-criar-conta-txt">
+                Crie sua conta e acompanhe seus pedidos facilmente
+              </p>
+              <Link href="/login?register=true" className="cf-criar-conta-btn">
+                Criar conta
+              </Link>
+            </div>
+          )}
+
+          {isGuest && (
+            <div className="cf-info-guest" style={{ marginTop: '16px' }}>
+              Após a confirmação do pagamento, enviaremos um e-mail para <strong>{guestEmail}</strong> para você criar sua senha.
+            </div>
+          )}
         </div>
       )}
     </>
@@ -502,6 +635,18 @@ const styles = `
     border-radius: var(--r-sm, 6px); padding: 10px 14px;
     font-size: 13px; font-weight: 600;
   }
+
+  .cf-info-guest {
+    background: #EAF5EA; color: #1a5c1a;
+    border-radius: var(--r-sm, 6px); padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .cf-link-login {
+    font-size: 13px; color: var(--g500);
+    text-decoration: underline; font-family: var(--ff-body);
+  }
+  .cf-link-login:hover { color: var(--g700); }
 
   .cf-btn-primary {
     width: 100%; padding: 13px; border-radius: 50px;

@@ -108,18 +108,20 @@ export async function POST(req: Request) {
 
     console.log('[webhook] lock adquirido, processando Bling...')
 
-    // Nome do cliente: Supabase Auth > MP payer > fallback
-    let nomeCliente = 'Cliente'
+    // Nome do cliente: Supabase Auth (logado) > guest_nome > MP payer > fallback
+    let nomeCliente = ''
     if (pedidoCompleto.user_id) {
       try {
         const { data: userData } = await supabase.auth.admin.getUserById(
           pedidoCompleto.user_id
         )
-        nomeCliente = userData?.user?.user_metadata?.nome || 'Cliente'
+        nomeCliente = userData?.user?.user_metadata?.nome || ''
         console.log('[webhook] nome do cliente:', nomeCliente)
       } catch {}
+    } else {
+      nomeCliente = pedidoCompleto.guest_nome ?? ''
     }
-    if (nomeCliente === 'Cliente') {
+    if (!nomeCliente) {
       nomeCliente = data.payer?.first_name
         ? `${data.payer.first_name} ${data.payer.last_name || ''}`.trim()
         : 'Cliente'
@@ -492,6 +494,49 @@ export async function POST(req: Request) {
         }
       } catch (meErr: any) {
         console.log('[webhook] erro ME carrinho:', meErr.message)
+      }
+    }
+
+    // Criar conta automaticamente para guests
+    if (!pedidoCompleto.user_id && pedidoCompleto.guest_email) {
+      try {
+        const { data: existingUsers } = await supabase.auth.admin.listUsers()
+        const jaExiste = existingUsers?.users?.some(
+          (u: any) => u.email === pedidoCompleto.guest_email
+        )
+
+        if (!jaExiste) {
+          const { data: novoUser, error: createError } = await supabase.auth.admin.createUser({
+            email: pedidoCompleto.guest_email,
+            email_confirm: true,
+            user_metadata: {
+              full_name: pedidoCompleto.guest_nome ?? '',
+              cpf: pedidoCompleto.cpf ?? '',
+            },
+          })
+
+          if (!createError && novoUser?.user) {
+            await supabase
+              .from('pedidos')
+              .update({ user_id: novoUser.user.id })
+              .eq('id', pedidoId!)
+
+            await supabase.auth.admin.generateLink({
+              type: 'magiclink',
+              email: pedidoCompleto.guest_email,
+              options: {
+                redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/criar-senha`,
+              },
+            })
+
+            console.log('[webhook] conta guest criada e magic link enviado:', pedidoCompleto.guest_email)
+          }
+        } else {
+          console.log('[webhook] conta já existe para:', pedidoCompleto.guest_email)
+        }
+      } catch (err) {
+        // Falha na criação de conta não deve quebrar o webhook
+        console.error('[webhook] Erro ao criar conta guest:', err)
       }
     }
 

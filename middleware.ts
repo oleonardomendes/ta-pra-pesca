@@ -37,21 +37,6 @@ export async function middleware(req: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Protege rotas de checkout — exige login
-  if (
-    pathname.startsWith('/checkout') ||
-    pathname.startsWith('/kits/checkout')
-  ) {
-    if (!user) {
-      const redirectUrl = new URL('/login', req.url)
-      redirectUrl.searchParams.set(
-        'redirect',
-        encodeURIComponent(pathname + req.nextUrl.search)
-      )
-      return NextResponse.redirect(redirectUrl)
-    }
-  }
-
   // Protege área da conta
   if (pathname.startsWith('/conta')) {
     if (!user) {
@@ -63,5 +48,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/checkout/:path*', '/kits/checkout/:path*', '/conta/:path*'],
+  matcher: ['/admin/:path*', '/conta/:path*'],
 }

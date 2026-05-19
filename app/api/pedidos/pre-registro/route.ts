@@ -15,12 +15,14 @@ export async function POST(req: Request) {
     freteServicoId,
     itens,
     total,
+    guestNome,
+    guestEmail,
   } = body
 
   const supabaseServer = createSupabaseServerClient()
   const { data: { user } } = await supabaseServer.auth.getUser()
 
-  console.log('[pre-registro] salvando pedido:', { pedidoId, mpPreferenceId, total })
+  console.log('[pre-registro] salvando pedido:', { pedidoId, mpPreferenceId, total, isGuest: !user })
 
   const { data, error } = await supabase
     .from('pedidos')
@@ -36,6 +38,8 @@ export async function POST(req: Request) {
       frete_valor: Number(freteValor) || null,
       frete_servico: freteServico || null,
       frete_servico_id: freteServicoId ? Number(freteServicoId) : null,
+      guest_email: !user?.id ? (guestEmail || null) : null,
+      guest_nome: !user?.id ? (guestNome || null) : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' })
     .select()
