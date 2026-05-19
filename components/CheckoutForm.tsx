@@ -287,6 +287,39 @@ export default function CheckoutForm({
       {/* STEP 0 — Dados do guest */}
       {step === 0 && (
         <div className="cf-section">
+
+          {/* Resumo do pedido — mesmo card dos steps seguintes */}
+          <div style={{ background: '#fff', border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)', padding: '16px', marginBottom: '4px' }}>
+            <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '.1em',
+              textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px' }}>
+              Resumo do pedido
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+              fontSize: '14px', color: 'var(--dark)', marginBottom: '8px' }}>
+              <span>{kitNome}</span>
+              <span>R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between',
+              fontSize: '13px', color: 'var(--muted)', marginBottom: '12px' }}>
+              <span>Frete</span>
+              <span>calculado no próximo passo</span>
+            </div>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: '700', fontSize: '15px', color: 'var(--g900)' }}>Produto</span>
+              <span style={{ fontFamily: 'var(--ff-display)', fontSize: '28px',
+                color: 'var(--g700)', letterSpacing: '.02em' }}>
+                R$ {Number(kitPreco).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--g500)', fontWeight: '600',
+              marginTop: '8px', textAlign: 'right' }}>
+              ⚡ PIX com 5% de desconto: R$ {(Number(kitPreco) * 0.95)
+                .toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
+
           <div className="cf-field">
             <label className="cf-label">Nome completo</label>
             <input

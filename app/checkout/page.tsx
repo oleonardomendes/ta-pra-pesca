@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import nextDynamic from 'next/dynamic'
 import { dimensoesProdutos, dimensoesPadrao } from '@/data/dimensoes'
+import StoreHeader from '@/components/StoreHeader'
 
 const CheckoutForm = nextDynamic(
   () => import('@/components/CheckoutForm'),
@@ -57,14 +58,17 @@ function CheckoutContent() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', background: 'var(--cream)',
-        color: 'var(--muted)', fontSize: '14px' }}>
-        Carregando...
-      </div>
-    }>
-      <CheckoutContent />
-    </Suspense>
+    <>
+      <StoreHeader />
+      <Suspense fallback={
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', background: 'var(--cream)',
+          color: 'var(--muted)', fontSize: '14px' }}>
+          Carregando...
+        </div>
+      }>
+        <CheckoutContent />
+      </Suspense>
+    </>
   )
 }

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { trackBeginCheckout } from '@/lib/analytics'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 import MPCheckout from '@/components/MPCheckoutBrick'
+import StoreHeader from '@/components/StoreHeader'
 import Link from 'next/link'
 
 const fmt = (n: number) =>
@@ -190,6 +191,7 @@ export default function CartCheckoutPage() {
   return (
     <>
       <style>{styles}</style>
+      <StoreHeader />
 
       <div className="cc-page">
         <Link href="/" className="cc-back">← Continuar comprando</Link>
