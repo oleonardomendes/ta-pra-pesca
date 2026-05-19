@@ -75,6 +75,8 @@ export default function CheckoutForm({
   // Guest data (Step 0)
   const [guestNome, setGuestNome] = useState('')
   const [guestEmail, setGuestEmail] = useState('')
+  const [checkingEmail, setCheckingEmail] = useState(false)
+  const [emailJaCadastrado, setEmailJaCadastrado] = useState(false)
 
   // Endereço
   const [cep, setCep] = useState('')
@@ -144,9 +146,23 @@ export default function CheckoutForm({
     return Object.keys(e).length === 0
   }
 
-  function handleAvancarStep0() {
+  async function handleAvancarStep0() {
     if (!validarStep0()) return
     setErros({})
+    setEmailJaCadastrado(false)
+    setCheckingEmail(true)
+    try {
+      const res = await fetch(`/api/auth/check-email?email=${encodeURIComponent(guestEmail)}`)
+      const { exists } = await res.json()
+      if (exists) {
+        setEmailJaCadastrado(true)
+        return
+      }
+    } catch {
+      // Em caso de falha na verificação, deixa prosseguir
+    } finally {
+      setCheckingEmail(false)
+    }
     setStep(1)
   }
 
@@ -214,12 +230,16 @@ export default function CheckoutForm({
         }).catch(() => {})
       }
     } catch {}
-    onFreteSelected({ servico: freteSelected.nome, valor: freteSelected.preco, prazo: freteSelected.prazo })
-    onEnderecoComplete({
-      endereco: { cep, logradouro, numero, complemento, bairro, cidade, estado },
-      cpf,
-      frete: freteSelected,
-    })
+
+    try {
+      onFreteSelected({ servico: freteSelected.nome, valor: freteSelected.preco, prazo: freteSelected.prazo })
+      onEnderecoComplete({
+        endereco: { cep, logradouro, numero, complemento, bairro, cidade, estado },
+        cpf,
+        frete: freteSelected,
+      })
+    } catch {}
+
     setLoadingPayment(false)
     setStep(3)
   }
@@ -282,14 +302,25 @@ export default function CheckoutForm({
           <div className="cf-field">
             <label className="cf-label">E-mail</label>
             <input
-              className={`cf-input${erros.guestEmail ? ' cf-input-erro' : ''}`}
+              className={`cf-input${erros.guestEmail || emailJaCadastrado ? ' cf-input-erro' : ''}`}
               type="email"
               placeholder="seu@email.com"
               value={guestEmail}
-              onChange={e => setGuestEmail(e.target.value)}
+              onChange={e => { setGuestEmail(e.target.value); setEmailJaCadastrado(false) }}
               autoComplete="email"
             />
             {erros.guestEmail && <span className="cf-erro-msg">{erros.guestEmail}</span>}
+            {emailJaCadastrado && (
+              <span className="cf-erro-msg">
+                Este e-mail já possui uma conta.{' '}
+                <a
+                  href={`/login?redirect=${encodeURIComponent(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/checkout')}`}
+                  className="cf-link-erro"
+                >
+                  Fazer login →
+                </a>
+              </span>
+            )}
           </div>
 
           <div className="cf-field">
@@ -308,8 +339,12 @@ export default function CheckoutForm({
             Após o pagamento, você receberá um e-mail para criar sua senha e acompanhar seus pedidos.
           </div>
 
-          <button className="cf-btn-primary" onClick={handleAvancarStep0}>
-            Continuar →
+          <button
+            className="cf-btn-primary"
+            onClick={handleAvancarStep0}
+            disabled={checkingEmail}
+          >
+            {checkingEmail ? '⏳ Verificando...' : 'Continuar →'}
           </button>
 
           <div style={{ textAlign: 'center', marginTop: '4px' }}>
@@ -624,6 +659,8 @@ const styles = `
   .cf-input-erro { border-color: #A32D2D !important; }
   .cf-input-readonly { background: var(--cream); color: var(--muted); cursor: default; }
   .cf-erro-msg { font-size: 11px; color: #A32D2D; font-weight: 600; }
+  .cf-link-erro { color: #A32D2D; text-decoration: underline; font-weight: 700; }
+  .cf-link-erro:hover { color: #7a1f1f; }
   .cf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .cf-cep-spinner {
     position: absolute; right: 12px; top: 50%; transform: translateY(-50%);

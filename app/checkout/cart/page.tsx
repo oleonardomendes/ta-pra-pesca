@@ -45,6 +45,7 @@ export default function CartCheckoutPage() {
   const [guestEmail, setGuestEmail] = useState('')
   const [guestCpf, setGuestCpf] = useState('')
   const [erros, setErros] = useState<Record<string, string>>({})
+  const [emailJaCadastrado, setEmailJaCadastrado] = useState(false)
 
   const [checkoutUrl, setCheckoutUrl] = useState<string>('')
   const [loadingCheckout, setLoadingCheckout] = useState(false)
@@ -115,8 +116,21 @@ export default function CartCheckoutPage() {
 
   async function handleAvancarDados() {
     if (!validarDados()) return
+    setEmailJaCadastrado(false)
     setLoadingCheckout(true)
     setErros({})
+
+    try {
+      const checkRes = await fetch(`/api/auth/check-email?email=${encodeURIComponent(guestEmail)}`)
+      const { exists } = await checkRes.json()
+      if (exists) {
+        setEmailJaCadastrado(true)
+        setLoadingCheckout(false)
+        return
+      }
+    } catch {
+      // Em caso de falha, deixa prosseguir
+    }
     try {
       const prefRes = await fetch('/api/mp/create-preference', {
         method: 'POST',
@@ -227,14 +241,25 @@ export default function CartCheckoutPage() {
                   <div className="cc-field">
                     <label className="cc-field-label">E-mail</label>
                     <input
-                      className={`cc-input${erros.guestEmail ? ' cc-input-erro' : ''}`}
+                      className={`cc-input${erros.guestEmail || emailJaCadastrado ? ' cc-input-erro' : ''}`}
                       type="email"
                       placeholder="seu@email.com"
                       value={guestEmail}
-                      onChange={e => setGuestEmail(e.target.value)}
+                      onChange={e => { setGuestEmail(e.target.value); setEmailJaCadastrado(false) }}
                       autoComplete="email"
                     />
                     {erros.guestEmail && <span className="cc-erro-msg">{erros.guestEmail}</span>}
+                    {emailJaCadastrado && (
+                      <span className="cc-erro-msg">
+                        Este e-mail já possui uma conta.{' '}
+                        <a
+                          href={`/login?redirect=${encodeURIComponent('/checkout/cart')}`}
+                          className="cc-link-erro"
+                        >
+                          Fazer login →
+                        </a>
+                      </span>
+                    )}
                   </div>
 
                   <div className="cc-field">
@@ -360,6 +385,8 @@ const styles = `
   .cc-input:focus { border-color: var(--g700); }
   .cc-input-erro { border-color: #A32D2D !important; }
   .cc-erro-msg { font-size: 11px; color: #A32D2D; font-weight: 600; }
+  .cc-link-erro { color: #A32D2D; text-decoration: underline; font-weight: 700; }
+  .cc-link-erro:hover { color: #7a1f1f; }
   .cc-info-guest {
     background: #EAF5EA; color: #1a5c1a;
     border-radius: var(--r-sm, 6px); padding: 10px 14px;
